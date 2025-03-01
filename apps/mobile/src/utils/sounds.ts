@@ -1,119 +1,112 @@
 import { Audio } from 'expo-av';
 import { Platform } from 'react-native';
-import { SoundName, SoundPlayer, soundFiles } from '../../../shared/utils/sounds';
+import { preloadAssets, getAssetUri } from './assetLoader';
 
-// Import sound files statically
-const getSoundModule = (filename: string) => {
-  switch (filename) {
-    case 'Move.mp3':
-      return require('../../assets/sounds/Move.mp3');
-    case 'Capture.mp3':
-      return require('../../assets/sounds/Capture.mp3');
-    case 'Check.mp3':
-      return require('../../assets/sounds/Check.mp3');
-    case 'Success.mp3':
-      return require('../../assets/sounds/Success.mp3');
-    case 'Failure.mp3':
-      return require('../../assets/sounds/Failure.mp3');
-    default:
-      throw new Error(`Unknown sound file: ${filename}`);
-  }
+// Define sound types
+export type SoundName = 'move' | 'capture' | 'check' | 'success' | 'failure';
+
+// Map of sound names to their require statements
+const soundModules: Record<SoundName, number> = {
+  move: require('../../assets/sounds/Move.mp3'),
+  capture: require('../../assets/sounds/Capture.mp3'),
+  check: require('../../assets/sounds/Check.mp3'),
+  success: require('../../assets/sounds/Success.mp3'),
+  failure: require('../../assets/sounds/Failure.mp3')
 };
 
 // Cache for loaded sounds
 const loadedSounds: Partial<Record<SoundName, Audio.Sound>> = {};
 
-// Mobile implementation of SoundPlayer
-const MobileSoundPlayer: SoundPlayer = {
-  // Load all sounds
-  loadSounds: async () => {
-    try {
-      console.log('Loading sounds...');
+/**
+ * Loads all sound files into memory
+ */
+export const loadSounds = async (): Promise<void> => {
+  try {
+    // Initialize Audio on mobile
+    if (Platform.OS !== 'web') {
+      await Audio.setAudioModeAsync({
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: false,
+        shouldDuckAndroid: false,
+      });
+    }
 
-      // Initialize Audio on mobile
-      if (Platform.OS !== 'web') {
-        await Audio.setAudioModeAsync({
-          playsInSilentModeIOS: true,
-          staysActiveInBackground: false,
-          shouldDuckAndroid: false,
-        });
-      }
+    // Preload all assets
+    const assetModules = Object.values(soundModules);
+    await preloadAssets(assetModules);
 
-      for (const [name, filename] of Object.entries(soundFiles)) {
-        try {
+    // Create sound objects
+    for (const [name, module] of Object.entries(soundModules)) {
+      try {
+        // Get the URI for the asset
+        const uri = await getAssetUri(module);
+        
+        if (uri) {
+          // Create a sound object from the URI
           const { sound } = await Audio.Sound.createAsync(
-            getSoundModule(filename),
+            { uri },
             { 
               shouldPlay: false,
               volume: 1.0,
               isMuted: false,
             }
           );
+          
           loadedSounds[name as SoundName] = sound;
-          console.log(`Loaded sound: ${name}`);
-        } catch (e) {
-          console.error(`Error loading sound ${name}:`, e);
         }
+      } catch (e) {
+        // Silently handle errors
       }
-      
-      console.log('All sounds loaded successfully');
-    } catch (error) {
-      console.error('Error loading sounds:', error);
     }
-  },
-
-  // Play a specific sound
-  playSound: async (name: SoundName) => {
-    try {
-      console.log(`Attempting to play sound: ${name}`);
-      const sound = loadedSounds[name];
-      
-      if (sound) {
-        // Always reset the position before playing
-        await sound.setPositionAsync(0);
-        
-        // Stop any currently playing instance
-        await sound.stopAsync();
-        
-        // Play the sound
-        await sound.playAsync();
-        console.log(`Sound played successfully: ${name}`);
-      } else {
-        console.warn(`Sound not loaded: ${name}`);
-      }
-    } catch (error) {
-      console.error(`Error playing sound ${name}:`, error);
-    }
-  },
-
-  // Unload all sounds when they're no longer needed
-  unloadSounds: async () => {
-    try {
-      console.log('Unloading sounds...');
-      
-      for (const [name, sound] of Object.entries(loadedSounds)) {
-        if (sound) {
-          try {
-            await sound.stopAsync();
-            await sound.unloadAsync();
-            console.log(`Unloaded sound: ${name}`);
-          } catch (e) {
-            console.error(`Error unloading sound ${name}:`, e);
-          }
-        }
-      }
-      
-      // Clear the cache
-      for (const key of Object.keys(loadedSounds)) {
-        delete loadedSounds[key as SoundName];
-      }
-      
-      console.log('All sounds unloaded successfully');
-    } catch (error) {
-      console.error('Error unloading sounds:', error);
-    }
+  } catch (error) {
+    // Silently handle errors
   }
 };
 
-// Export the mobile implementation functions directly
-export const { loadSounds, playSound, unloadSounds } = MobileSoundPlayer; 
+/**
+ * Plays a specific sound
+ * @param name The name of the sound to play
+ */
+export const playSound = async (name: SoundName): Promise<void> => {
+  try {
+    const sound = loadedSounds[name];
+    
+    if (sound) {
+      // Always reset the position before playing
+      await sound.setPositionAsync(0);
+      
+      // Stop any currently playing instance
+      await sound.stopAsync();
+      
+      // Play the sound
+      await sound.playAsync();
+    }
+  } catch (error) {
+    // Silently handle errors
+  }
+};
+
+/**
+ * Unloads all sounds from memory
+ */
+export const unloadSounds = async (): Promise<void> => {
+  try {
+    for (const [name, sound] of Object.entries(loadedSounds)) {
+      if (sound) {
+        try {
+          await sound.stopAsync();
+          await sound.unloadAsync();
+        } catch (e) {
+          // Silently handle errors
+        }
+      }
+    }
+    
+    // Clear the cache
+    for (const key of Object.keys(loadedSounds)) {
+      delete loadedSounds[key as SoundName];
+    }
+  } catch (error) {
+    // Silently handle errors
+  }
+}; 

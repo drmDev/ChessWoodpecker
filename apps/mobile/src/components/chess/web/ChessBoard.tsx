@@ -1,13 +1,42 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { View, StyleSheet, Text } from 'react-native';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { View, StyleSheet, Text, Dimensions } from 'react-native';
 import { Chessboard } from 'react-chessboard';
 import { Chess, Square } from 'chess.js';
 import { loadSounds, playSound, unloadSounds } from '../../../utils/sounds';
+import { useTheme } from '../../../../../shared/contexts/ThemeContext';
 
 export const WebChessBoard = () => {
   const [game, setGame] = useState(new Chess());
-  const [position, setPosition] = useState(game.fen());
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const { colors, mode, isDark } = useTheme();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [boardWidth, setBoardWidth] = useState(400);
+
+  // Calculate board width based on container size
+  useEffect(() => {
+    const updateBoardSize = () => {
+      // Get the parent container's dimensions
+      const container = containerRef.current?.parentElement;
+      if (container) {
+        // Use 90% of the available height, but not more than 80% of width
+        const maxHeight = window.innerHeight * 0.7;
+        const maxWidth = window.innerWidth * 0.8;
+        const optimalSize = Math.min(maxHeight, maxWidth, 700); // Cap at 700px
+        setBoardWidth(optimalSize);
+      } else {
+        // Fallback if container not available
+        const width = Math.min(window.innerWidth - 40, 600);
+        setBoardWidth(width);
+      }
+    };
+
+    // Set initial size
+    updateBoardSize();
+
+    // Update on resize
+    window.addEventListener('resize', updateBoardSize);
+    return () => window.removeEventListener('resize', updateBoardSize);
+  }, []);
 
   // Load sounds on mount
   useEffect(() => {
@@ -24,76 +53,66 @@ export const WebChessBoard = () => {
     }, 2000);
   }, []);
 
-  const makeMove = (from: string, to: string) => {
+  // Handle piece movement
+  const onDrop = (sourceSquare: Square, targetSquare: Square) => {
     try {
+      // Create a new game instance to avoid modifying the current one directly
       const newGame = new Chess(game.fen());
       
-      // Check if it's trying to move opponent's piece
-      const piece = game.get(from as Square);
-      if (!piece) {
-        setErrorMessage('No piece at selected position');
-        playSound('failure');
-        clearError();
-        return false;
-      }
-      
-      if ((game.turn() === 'w' && piece.color === 'b') || 
-          (game.turn() === 'b' && piece.color === 'w')) {
-        setErrorMessage("Can't move opponent's pieces");
-        playSound('failure');
-        clearError();
-        return false;
-      }
-
+      // Attempt to make the move
       const move = newGame.move({
-        from: from as Square,
-        to: to as Square,
+        from: sourceSquare,
+        to: targetSquare,
         promotion: 'q', // always promote to queen for simplicity
       });
-
+      
+      // If the move is valid, update the game state
       if (move) {
         setGame(newGame);
-        setPosition(newGame.fen());
-        
-        // Play appropriate sound
-        if (move.captured) {
-          playSound('capture');
-        } else if (move.san.includes('+')) {
-          playSound('check');
-        } else {
-          playSound('move');
-        }
-        
+        setErrorMessage(null);
         return true;
       }
-
-      setErrorMessage('Invalid move');
-      playSound('failure');
-      clearError();
-      return false;
     } catch (e) {
       setErrorMessage('Invalid move');
-      playSound('failure');
-      clearError();
-      return false;
+      console.error('Move error:', e);
     }
+    
+    return false;
   };
 
+  // More vibrant board colors
+  const darkSquareStyle = isDark 
+    ? { backgroundColor: '#1A5276' } // Deep blue for dark mode
+    : { backgroundColor: '#1E8449' }; // Forest green for light mode
+  
+  const lightSquareStyle = isDark 
+    ? { backgroundColor: '#D6EAF8' } // Light blue for dark mode
+    : { backgroundColor: '#FCF3CF' }; // Cream for light mode
+
   return (
-    <View style={styles.container}>
-      <div style={{ width: '80vw', maxWidth: '600px' }}>
+    <View style={[
+      styles.container, 
+      { 
+        backgroundColor: colors.surface,
+        shadowColor: isDark ? colors.accent : colors.primary,
+      }
+    ]}>
+      {errorMessage && (
+        <Text style={[styles.errorText, { color: colors.error }]}>
+          {errorMessage}
+        </Text>
+      )}
+      <div style={{ width: boardWidth, height: boardWidth }}>
         <Chessboard
-          position={position}
-          onPieceDrop={makeMove}
-          boardWidth={600}
-          areArrowsAllowed={true}
-          showBoardNotation={true}
+          id="BasicBoard"
+          boardWidth={boardWidth}
+          position={game.fen()}
+          onPieceDrop={onDrop}
+          customDarkSquareStyle={darkSquareStyle}
+          customLightSquareStyle={lightSquareStyle}
+          boardOrientation="white"
+          showBoardNotation={false}
         />
-        {errorMessage && (
-          <Text style={styles.errorText}>
-            {errorMessage}
-          </Text>
-        )}
       </div>
     </View>
   );
@@ -101,16 +120,18 @@ export const WebChessBoard = () => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    justifyContent: 'center',
+    padding: 8,
+    borderRadius: 8,
+    borderWidth: 1,
     alignItems: 'center',
-    backgroundColor: '#F5FCFF',
+    justifyContent: 'center',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
   },
   errorText: {
-    color: '#E53935',
-    fontSize: 16,
-    marginTop: 8,
-    textAlign: 'center',
+    marginBottom: 8,
     fontWeight: 'bold',
   },
 }); 

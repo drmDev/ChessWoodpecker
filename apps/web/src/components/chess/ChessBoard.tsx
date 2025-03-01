@@ -4,8 +4,10 @@ import { Chess, Square } from 'chess.js';
 import { loadSounds, playSound, unloadSounds } from '../../utils/sounds';
 
 const ChessBoard: React.FC = () => {
-  const [game, setGame] = useState(new Chess());
-  const [position, setPosition] = useState(game.fen());
+  // Initialize the game with a proper constructor
+  const [game, setGame] = useState<Chess>(new Chess());
+  // Then use the game instance to get the FEN
+  const [position, setPosition] = useState<string>(game.fen());
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Load sounds on mount

@@ -20,5 +20,8 @@
   "license": "ISC",
   "workspaces": [
     "apps/*"
-  ]
+  ],
+  "dependencies": {
+    "expo-asset": "^11.0.4"
+  }
 }
