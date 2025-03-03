@@ -24,9 +24,6 @@ module.exports = {
       backgroundColor: '#FFFFFF'
     }
   },
-  web: {
-    favicon: './assets/favicon.png'
-  },
   extra: {
     enableLogging: true
   }
