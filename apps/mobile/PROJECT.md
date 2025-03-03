@@ -4,7 +4,7 @@ Chess Woodpecker is a mobile application designed for chess training using the "
 
 ## Project Overview
 
-This React Native application built with Expo provides a mobile interface for chess puzzle training. It features a chess board, puzzle solving functionality, session tracking, and performance statistics.
+This React Native application built with Expo provides a mobile interface for chess puzzle training. It features a chess board, puzzle solving functionality from the Lichess API, session tracking, and performance statistics.
 
 ## Technology Stack
 
@@ -12,7 +12,7 @@ This React Native application built with Expo provides a mobile interface for ch
 
 - **TypeScript**: Strongly-typed programming language that builds on JavaScript
 - **React Native**: Framework for building native mobile applications using React
-- **Expo**: Platform for making universal React applications that run on Android, iOS, and the web
+- **Expo**: Platform for making universal React applications that run on Android and iOS
 
 ### State Management
 
@@ -30,7 +30,7 @@ This React Native application built with Expo provides a mobile interface for ch
 ### Chess-specific Libraries
 
 - **chess.js**: JavaScript chess library that handles chess logic, move validation, etc.
-- **react-native-chessboard**: Provides the interactive chessboard component
+- **react-native-chessboard**: Provides the interactive chessboard component for mobile
 
 ### Navigation
 
@@ -41,6 +41,10 @@ This React Native application built with Expo provides a mobile interface for ch
 
 - **AsyncStorage**: Persistent, key-value storage system for React Native
 - **Expo Asset**: Manages assets like images and sounds
+
+### External APIs
+
+- **Lichess Puzzle API**: Provides chess puzzles with various themes and difficulty levels
 
 ### Audio
 
@@ -56,38 +60,35 @@ This React Native application built with Expo provides a mobile interface for ch
 ```
 apps/mobile/
 ├── assets/                  # Static assets (images, sounds)
-│   └── sounds/              # Sound effects for chess moves
+│   ├── sounds/              # Sound effects for chess moves
+│   └── puzzles/             # Puzzle collections in JSON format
 ├── src/                     # Source code
 │   ├── components/          # React components
 │   │   ├── chess/           # Chess-related components
-│   │   │   └── ChessBoard.tsx  # Chess board component
-│   │   ├── session/         # Session-related components
-│   │   │   ├── SessionManager.tsx  # Manages training sessions
-│   │   │   └── SessionStats.tsx    # Displays session statistics
-│   │   └── navigation/      # Navigation components
+│   │   │   └── mobile/      # Mobile-specific chess components
+│   │   │       └── ChessBoard.tsx  # Mobile chess board implementation
+│   │   │   └── ChessBoard.tsx  # Main chess board component
+│   │   └── session/         # Session-related components
+│   │       ├── SessionManager.tsx  # Manages training sessions
+│   │       └── SessionStats.tsx    # Displays session statistics
 │   ├── contexts/            # React contexts
 │   │   ├── AppStateContext.tsx  # Global application state
 │   │   └── ThemeContext.tsx     # Theme management
 │   ├── navigation/          # Navigation configuration
-│   │   └── AppNavigator.tsx     # Main navigation setup
+│   │   └── AppNavigator.tsx     # Main navigation setup with bottom tabs
 │   ├── screens/             # Application screens
-│   │   └── MainScreen.tsx       # Main screen with chess board
+│   │   ├── MainScreen.tsx       # Main screen with chess board
+│   │   └── LichessApiTestScreen.tsx  # Screen for testing Lichess API
 │   ├── services/            # Business logic services
-│   │   ├── PuzzleService.ts     # Manages puzzle data
-│   │   ├── SessionService.ts    # Handles session data
-│   │   └── TimerService.ts      # Manages timer functionality
-│   ├── styles/              # Styling utilities
-│   │   └── theme.ts             # Theme definitions
+│   │   ├── PuzzleService.ts     # Manages puzzle data and Lichess API
+│   │   └── SessionService.ts    # Handles session data
 │   ├── utils/               # Utility functions
 │   │   ├── assetLoader.ts       # Asset loading utilities
-│   │   ├── puzzleParser.ts      # Parses puzzle data
-│   │   ├── PuzzlePlayer.ts      # Handles puzzle gameplay
-│   │   ├── sounds.ts            # Sound management
-│   │   └── timeUtils.ts         # Time formatting utilities
+│   │   └── sounds.ts            # Sound management
 │   └── __tests__/           # Unit tests
-│       └── TimerService.test.ts # Tests for TimerService
 ├── App.tsx                  # Root component
 ├── app.json                 # Expo configuration
+├── app.config.js            # Additional Expo configuration
 ├── babel.config.js          # Babel configuration
 ├── index.ts                 # Entry point
 ├── jest.config.js           # Jest configuration
@@ -125,7 +126,27 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({ isDark = false }) => {
 }
 ```
 
-### 2. Theme Management
+### 2. Lichess Puzzle Integration
+
+The application integrates with the Lichess Puzzle API to provide a variety of chess puzzles. The `LichessApiTestScreen` demonstrates fetching puzzle data from the API.
+
+```typescript
+// LichessApiTestScreen.tsx (simplified)
+const fetchPuzzle = async (id: string, index: number) => {
+  try {
+    // Make API request to Lichess
+    const response = await fetch(`https://lichess.org/api/puzzle/${id}`);
+    const data = await response.json();
+    
+    // Log the response
+    console.log(`Puzzle ${id} Response:`, data);
+  } catch (error) {
+    console.error(`Error fetching puzzle ${id}:`, error);
+  }
+};
+```
+
+### 3. Theme Management
 
 The application supports both light and dark themes through the `ThemeContext`. This context provides theme values and a function to toggle between themes.
 
@@ -146,9 +167,9 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
 };
 ```
 
-### 3. Session Management
+### 4. Session Management
 
-The application tracks training sessions using the `AppStateContext` and `TimerService`. This allows users to start, pause, and end sessions, with statistics tracked throughout.
+The application tracks training sessions using the `AppStateContext`. This allows users to start, pause, and end sessions, with statistics tracked throughout.
 
 ```typescript
 // SessionManager.tsx (simplified)
@@ -174,7 +195,7 @@ export const SessionManager: React.FC = () => {
 }
 ```
 
-### 4. Sound Effects
+### 5. Sound Effects
 
 The application uses `expo-av` to play sound effects for different chess moves and events, enhancing the user experience.
 
@@ -195,37 +216,36 @@ export const playSound = async (name: SoundName): Promise<void> => {
 };
 ```
 
-### 5. Puzzle Management
+### 6. Navigation
 
-The `PuzzleService` and `PuzzlePlayer` classes handle puzzle data and gameplay. Puzzles can be loaded, played, and tracked for progress.
+The application uses React Navigation's bottom tab navigator to provide navigation between different screens.
 
 ```typescript
-// PuzzlePlayer.ts (simplified)
-export class PuzzlePlayer {
-  // ...
-  
-  loadPuzzle(puzzle: Puzzle): void {
-    this.currentPuzzle = puzzle;
-    this.currentSolutionIndex = 0;
-    
-    // Reset the chess board to the puzzle's FEN
-    this.chess.load(puzzle.fen);
-    
-    // Make the first move (AI move)
-    if (puzzle.moves.length > 0) {
-      const firstMove = puzzle.moves[0];
-      this.chess.move(firstMove);
-      this.currentSolutionIndex = 1;
-      this.isUserTurn = true;
-      
-      if (this.options.onAiMove) {
-        this.options.onAiMove(firstMove);
-      }
-    }
-  }
-  
-  // ...
-}
+// AppNavigator.tsx (simplified)
+export const AppNavigator: React.FC = () => {
+  return (
+    <NavigationContainer theme={navigationTheme}>
+      <Tab.Navigator>
+        <Tab.Screen 
+          name="Home" 
+          component={MainScreen} 
+          options={{ 
+            title: 'Chess Woodpecker',
+            headerShown: false,
+          }} 
+        />
+        <Tab.Screen 
+          name="LichessApiTest" 
+          component={LichessApiTestScreen} 
+          options={{ 
+            title: 'Lichess API Test',
+            headerShown: true,
+          }} 
+        />
+      </Tab.Navigator>
+    </NavigationContainer>
+  );
+};
 ```
 
 ## Development Workflow
@@ -241,9 +261,6 @@ npm run android
 
 # Run on iOS
 npm run ios
-
-# Run on web
-npm run web
 ```
 
 ### Testing
@@ -253,34 +270,10 @@ npm run web
 npm test
 ```
 
-## Architecture Decisions
+## Future Enhancements
 
-### 1. Context API for State Management
-
-The application uses React Context API instead of Redux for state management. This decision was made to reduce bundle size and complexity while still providing global state management capabilities.
-
-### 2. Service-Based Architecture
-
-Business logic is encapsulated in service classes (e.g., `TimerService`, `PuzzleService`) to separate concerns and make the code more maintainable and testable.
-
-### 3. Functional Components with Hooks
-
-The application uses functional components with React hooks throughout, following modern React best practices.
-
-### 4. TypeScript for Type Safety
-
-TypeScript is used to provide static type checking, improving code quality and developer experience.
-
-### 5. Expo for Cross-Platform Development
-
-Expo was chosen to simplify development and deployment across multiple platforms (iOS, Android, web).
-
-## Contributing
-
-To contribute to this project:
-
-1. Familiarize yourself with the project structure and architecture
-2. Follow the TypeScript and React Native best practices
-3. Write tests for new features
-4. Ensure your code passes linting and type checking
-5. Submit a pull request with a clear description of your changes
+1. Full puzzle solving workflow with success/failure tracking
+2. Spaced repetition system for puzzle practice
+3. Offline support with locally cached puzzles
+4. More detailed statistics and progress tracking
+5. User accounts and cloud synchronization

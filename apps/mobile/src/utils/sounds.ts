@@ -22,7 +22,7 @@ const loadedSounds: Partial<Record<SoundName, Audio.Sound>> = {};
  */
 export const loadSounds = async (): Promise<void> => {
   try {
-    // Initialize Audio
+    // Initialize Audio on mobile
     await Audio.setAudioModeAsync({
       playsInSilentModeIOS: true,
       staysActiveInBackground: false,
