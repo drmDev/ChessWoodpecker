@@ -48,25 +48,24 @@ const sampleLichessResponse: LichessPuzzleResponse = {
 
 describe('PuzzleCacheService', () => {
   beforeEach(() => {
-    // Clear all mocks before each test
     jest.clearAllMocks();
     
     // Setup default mock implementations
-    (FileSystem.getInfoAsync as jest.Mock).mockResolvedValue({ exists: true, isDirectory: false });
-    (FileSystem.readAsStringAsync as jest.Mock).mockResolvedValue(JSON.stringify({ 
-      puzzles: { 
-        test123: samplePuzzleData 
-      } 
+    (FileSystem.getInfoAsync as any).mockResolvedValue({ exists: true, isDirectory: false });
+    (FileSystem.readAsStringAsync as any).mockResolvedValue(JSON.stringify({
+      puzzles: {
+        test123: samplePuzzleData
+      }
     }));
-    (FileSystem.writeAsStringAsync as jest.Mock).mockResolvedValue(undefined);
-    (FileSystem.deleteAsync as jest.Mock).mockResolvedValue(undefined);
-    (FileSystem.makeDirectoryAsync as jest.Mock).mockResolvedValue(undefined);
+    (FileSystem.writeAsStringAsync as any).mockResolvedValue(undefined);
+    (FileSystem.deleteAsync as any).mockResolvedValue(undefined);
+    (FileSystem.makeDirectoryAsync as any).mockResolvedValue(undefined);
   });
 
   describe('initializeCache', () => {
     it('should create cache directory if it does not exist', async () => {
       // Setup: Directory doesn't exist
-      (FileSystem.getInfoAsync as jest.Mock).mockResolvedValue({ exists: false });
+      (FileSystem.getInfoAsync as any).mockResolvedValue({ exists: false });
       
       await initializeCache();
       
@@ -78,7 +77,7 @@ describe('PuzzleCacheService', () => {
 
     it('should create empty cache file if it does not exist', async () => {
       // Setup: File doesn't exist
-      (FileSystem.getInfoAsync as jest.Mock)
+      (FileSystem.getInfoAsync as any)
         .mockResolvedValueOnce({ exists: true }) // Directory exists
         .mockResolvedValueOnce({ exists: false }); // File doesn't exist
       
@@ -109,7 +108,7 @@ describe('PuzzleCacheService', () => {
 
     it('should return null if cache file does not exist', async () => {
       // Setup: File doesn't exist
-      (FileSystem.getInfoAsync as jest.Mock).mockResolvedValue({ exists: false });
+      (FileSystem.getInfoAsync as any).mockResolvedValue({ exists: false });
       
       const puzzle = await getCachedPuzzle('test123');
       
@@ -118,7 +117,7 @@ describe('PuzzleCacheService', () => {
 
     it('should handle JSON parsing errors', async () => {
       // Setup: Invalid JSON
-      (FileSystem.readAsStringAsync as jest.Mock).mockResolvedValue('invalid json');
+      (FileSystem.readAsStringAsync as any).mockResolvedValue('invalid json');
       
       const puzzle = await getCachedPuzzle('test123');
       
@@ -132,7 +131,7 @@ describe('PuzzleCacheService', () => {
       
       expect(FileSystem.writeAsStringAsync).toHaveBeenCalled();
       const writeCall = (FileSystem.writeAsStringAsync as jest.Mock).mock.calls[0];
-      const writtenData = JSON.parse(writeCall[1]);
+      const writtenData = JSON.parse(writeCall[1] as string);
       
       expect(writtenData.puzzles.test123).toBeDefined();
       expect(writtenData.puzzles.test123.pgn).toEqual('1. e4 e5 2. Nf3 Nc6');
@@ -141,7 +140,7 @@ describe('PuzzleCacheService', () => {
 
     it('should create the cache file if it does not exist', async () => {
       // Setup: File doesn't exist
-      (FileSystem.getInfoAsync as jest.Mock).mockResolvedValue({ exists: false });
+      (FileSystem.getInfoAsync as any).mockResolvedValue({ exists: false });
       
       await addPuzzleToCache(sampleLichessResponse);
       
@@ -158,7 +157,7 @@ describe('PuzzleCacheService', () => {
 
     it('should update an existing puzzle in the cache', async () => {
       // Setup: Puzzle already exists with different data
-      (FileSystem.readAsStringAsync as jest.Mock).mockResolvedValue(JSON.stringify({ 
+      (FileSystem.readAsStringAsync as any).mockResolvedValue(JSON.stringify({ 
         puzzles: { 
           test123: {
             id: 'test123',
@@ -174,7 +173,7 @@ describe('PuzzleCacheService', () => {
       
       expect(FileSystem.writeAsStringAsync).toHaveBeenCalled();
       const writeCall = (FileSystem.writeAsStringAsync as jest.Mock).mock.calls[0];
-      const writtenData = JSON.parse(writeCall[1]);
+      const writtenData = JSON.parse(writeCall[1] as string);
       
       expect(writtenData.puzzles.test123.pgn).toEqual('1. e4 e5 2. Nf3 Nc6');
     });
@@ -200,7 +199,7 @@ describe('PuzzleCacheService', () => {
 
     it('should return empty object if cache file does not exist', async () => {
       // Setup: File doesn't exist
-      (FileSystem.getInfoAsync as jest.Mock).mockResolvedValue({ exists: false });
+      (FileSystem.getInfoAsync as any).mockResolvedValue({ exists: false });
       
       const puzzles = await getCachedPuzzles();
       
