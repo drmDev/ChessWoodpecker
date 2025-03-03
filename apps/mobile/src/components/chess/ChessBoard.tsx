@@ -23,8 +23,6 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({ isDark = false }) => {
   };
   
   const handleMove = ({ state }: any) => {
-    console.log('Move detected');
-    
     // Default to playing move sound
     let soundToPlay: 'move' | 'capture' | 'check' | 'success' = 'move';
     
@@ -41,7 +39,6 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({ isDark = false }) => {
     }
     
     // Play the sound
-    console.log(`Playing sound: ${soundToPlay}`);
     playSound(soundToPlay);
   };
   

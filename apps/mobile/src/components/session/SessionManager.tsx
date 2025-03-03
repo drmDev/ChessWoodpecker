@@ -1,6 +1,5 @@
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
-import { formatTimeHHMMSS } from '../../utils/timeUtils';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAppState } from '../../contexts/AppStateContext';
 import { timerService } from '../../services/TimerService';
@@ -67,77 +66,57 @@ export const SessionManager: React.FC = () => {
     playSound('move');
   };
   
-  // Format the elapsed time
-  const formattedTime = formatTimeHHMMSS(sessionData?.elapsedTime || 0);
-  
   return (
     <View style={[styles.container, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-      <View style={styles.timerContainer}>
-        <Text style={[styles.timerText, { color: theme.text }]}>
-          {formattedTime}
-        </Text>
-      </View>
-      
-      <View style={styles.buttonContainer}>
-        {!isActive ? (
-          <TouchableOpacity
-            style={[styles.button, { backgroundColor: theme.primary }]}
-            onPress={handleStartSession}
-          >
-            <Ionicons name="play" size={24} color="white" />
-            <Text style={styles.buttonText}>Start Session</Text>
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity
-            style={[styles.button, { backgroundColor: theme.error }]}
-            onPress={handleEndSession}
-          >
-            <Ionicons name="stop" size={24} color="white" />
-            <Text style={styles.buttonText}>End Session</Text>
-          </TouchableOpacity>
-        )}
-      </View>
+      {!isActive ? (
+        <TouchableOpacity
+          style={[styles.button, { backgroundColor: theme.primary }]}
+          onPress={handleStartSession}
+        >
+          <Ionicons name="play" size={20} color="white" />
+          <Text style={styles.buttonText}>Start Session</Text>
+        </TouchableOpacity>
+      ) : (
+        <TouchableOpacity
+          style={[styles.button, { backgroundColor: theme.error }]}
+          onPress={handleEndSession}
+        >
+          <Ionicons name="stop" size={20} color="white" />
+          <Text style={styles.buttonText}>End Session</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
+    alignItems: 'center',
+    justifyContent: 'center',
     borderRadius: 8,
     borderWidth: 1,
-    padding: 16,
-    margin: 16,
+    padding: 12,
+    marginHorizontal: 16,
+    marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
   },
-  timerContainer: {
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  timerText: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-  },
   button: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 10,
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
     borderRadius: 8,
-    minWidth: 150,
+    minWidth: 180,
   },
   buttonText: {
     color: 'white',
     fontWeight: 'bold',
     marginLeft: 8,
+    fontSize: 16,
   },
 }); 
