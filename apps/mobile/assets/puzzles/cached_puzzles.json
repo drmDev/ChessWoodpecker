@@ -1,0 +1,18 @@
+{
+  "puzzles": {
+    "white_puzzle_1": {
+      "id": "white_puzzle_1",
+      "pgn": "1. e4 e5 2. Nf3 Nc6",
+      "initialFen": "rnbqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3",
+      "initialPly": 4,
+      "solution": ["d2d4", "e5d4", "f3d4"]
+    },
+    "black_puzzle_1": {
+      "id": "black_puzzle_1",
+      "pgn": "1. e4 e5 2. Nf3 Nc6 3. d4",
+      "initialFen": "r1bqkbnr/pppp1ppp/2n5/4p3/3PP3/5N2/PPP2PPP/RNBQKB1R b KQkq - 0 3",
+      "initialPly": 5,
+      "solution": ["e5d4", "f3d4", "g8f6"]
+    }
+  }
+} 
