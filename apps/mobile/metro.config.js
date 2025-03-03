@@ -10,12 +10,12 @@ if (!config.resolver.assetExts.includes('mp3')) {
   config.resolver.assetExts.push('mp3');
 }
 
-// Configure path aliases
+// Configure path aliases (removed shared reference)
 config.resolver.extraNodeModules = {
-  '@shared': path.resolve(__dirname, '../shared'),
+  // All shared code is now in the mobile app
 };
 
-// Add the shared directory to watchFolders
-config.watchFolders = [path.resolve(__dirname, '../shared')];
+// Remove watchFolders configuration that referenced shared
+// config.watchFolders = [path.resolve(__dirname, '../shared')];
 
 module.exports = config; 

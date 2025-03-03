@@ -3,98 +3,76 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer, Theme } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { MainScreen } from '../screens/MainScreen';
-import { PuzzlesScreen } from '../../../shared/screens/PuzzlesScreen';
-import { useTheme } from '../../../shared/contexts/ThemeContext';
+import { useTheme } from '../contexts/ThemeContext';
 
 // Define the tab navigator param list
 type TabParamList = {
-  Practice: undefined;
-  Puzzles: undefined;
+  Home: undefined;
+  Stats: undefined;
+  Settings: undefined;
 };
 
 const Tab = createBottomTabNavigator<TabParamList>();
 
 export const AppNavigator: React.FC = () => {
-  const { colors, isDark } = useTheme();
+  const { theme, themeMode } = useTheme();
+  const isDark = themeMode === 'dark';
+
+  // Create navigation theme based on app theme
+  const navigationTheme: Theme = {
+    dark: isDark,
+    colors: {
+      primary: theme.primary,
+      background: theme.background,
+      card: theme.surface,
+      text: theme.text,
+      border: theme.border,
+      notification: theme.accent,
+    },
+    fonts: {} as Theme['fonts'], // Add empty fonts object to satisfy the type
+  };
 
   return (
-    <NavigationContainer
-      theme={{
-        dark: isDark,
-        colors: {
-          primary: colors.primary,
-          background: colors.background,
-          card: colors.surface,
-          text: colors.text,
-          border: colors.border,
-          notification: colors.accent,
-        },
-        fonts: {} as Theme['fonts'], // Add empty fonts object to satisfy the type
-      }}
-    >
+    <NavigationContainer theme={navigationTheme}>
       <Tab.Navigator
         screenOptions={({ route }) => ({
           tabBarIcon: ({ focused, color, size }) => {
-            let iconName: any = '';
+            let iconName: string = '';
 
-            if (route.name === 'Practice') {
-              iconName = focused ? 'play-circle' : 'play-circle-outline';
-            } else if (route.name === 'Puzzles') {
-              iconName = focused ? 'grid' : 'grid-outline';
+            if (route.name === 'Home') {
+              iconName = focused ? 'home' : 'home-outline';
+            } else if (route.name === 'Stats') {
+              iconName = focused ? 'stats-chart' : 'stats-chart-outline';
+            } else if (route.name === 'Settings') {
+              iconName = focused ? 'settings' : 'settings-outline';
             }
 
-            // Use a simple approach without nested Views to avoid pointerEvents issues
-            return <Ionicons name={iconName} size={size} color={color} />;
+            return <Ionicons name={iconName as any} size={size} color={color} />;
           },
-          tabBarActiveTintColor: colors.primary,
-          tabBarInactiveTintColor: colors.textSecondary,
+          tabBarActiveTintColor: theme.primary,
+          tabBarInactiveTintColor: theme.textSecondary,
           tabBarStyle: {
-            backgroundColor: colors.surface,
-            borderTopColor: colors.border,
-            borderTopWidth: 1,
-            elevation: 8,
-            shadowColor: isDark ? '#000' : colors.primary,
-            shadowOffset: { width: 0, height: -3 },
-            shadowOpacity: 0.1,
-            shadowRadius: 4,
-            height: 60,
-            paddingBottom: 8,
+            backgroundColor: theme.surface,
+            borderTopColor: theme.border,
           },
           headerStyle: {
-            backgroundColor: colors.surface,
-            borderBottomColor: colors.border,
+            backgroundColor: theme.surface,
+            borderBottomColor: theme.border,
             borderBottomWidth: 1,
-            elevation: 4,
-            shadowColor: isDark ? '#000' : colors.primary,
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.1,
-            shadowRadius: 3,
           },
-          headerTintColor: colors.text,
+          headerTintColor: theme.text,
           headerTitleStyle: {
             fontWeight: 'bold',
-            color: colors.primary,
-          },
-          tabBarLabelStyle: {
-            fontSize: 14,
-            fontWeight: '600',
-            marginBottom: 4,
           },
         })}
       >
         <Tab.Screen 
-          name="Practice" 
-          component={MainScreen}
-          options={{
-            title: 'Woodpecker',
-          }}
-        />
-        <Tab.Screen 
-          name="Puzzles" 
-          component={PuzzlesScreen}
-          options={{
-            title: 'Puzzles',
-          }}
+          name="Home" 
+          component={MainScreen} 
+          options={{ 
+            title: 'Chess Woodpecker',
+            headerShown: false,
+          }} 
         />
       </Tab.Navigator>
     </NavigationContainer>

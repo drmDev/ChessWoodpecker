@@ -1,182 +1,121 @@
 import React from 'react';
 import { View, Text, StyleSheet, Platform } from 'react-native';
-import { SessionStats as SessionStatsType } from '../../services/SessionService';
+import { useTheme } from '../../contexts/ThemeContext';
+import { useAppState } from '../../contexts/AppStateContext';
 import { formatTimeHHMMSS } from '../../utils/timeUtils';
-import { useTheme } from '../../../../shared/contexts/ThemeContext';
-import { Ionicons } from '@expo/vector-icons';
 
-interface SessionStatsProps {
-  stats: SessionStatsType;
-  currentSessionTime?: number; // Add prop for current session time
-  hideTitle?: boolean; // Add prop to hide the title
-}
+export const SessionStats: React.FC = () => {
+  const { state } = useAppState();
+  const { theme, themeMode } = useTheme();
+  const isDark = themeMode === 'dark';
+  
+  // Extract session data from state
+  const sessionData = state.sessionData;
+  
+  // Calculate stats
+  const elapsedTime = sessionData?.startTime ? Date.now() - sessionData.startTime : 0;
+  const puzzlesAttempted = sessionData ? 
+    sessionData.solvedPuzzles.length + sessionData.failedPuzzles.length : 0;
+  const puzzlesSolved = sessionData?.solvedPuzzles.length || 0;
+  
+  // Calculate success rate
+  const successRate = puzzlesAttempted > 0 
+    ? Math.round((puzzlesSolved / puzzlesAttempted) * 100) 
+    : 0;
 
-export const SessionStats: React.FC<SessionStatsProps> = ({ 
-  stats, 
-  currentSessionTime = 0,
-  hideTitle = false 
-}) => {
-  const { colors, isDark } = useTheme();
-  
-  // Woodpecker-inspired colors
-  const headerColor = '#D32F2F'; // Woodpecker red
-  const labelColors = {
-    attempted: '#FF9800', // Orange
-    solved: '#2196F3',    // Blue
-    rate: '#9C27B0'       // Purple
-  };
-  
-  // Matrix-like green color for the timer
-  const timerColor = '#00FF41'; // Bright matrix green
-  const timerGlowColor = isDark ? 'rgba(0, 255, 65, 0.3)' : 'rgba(0, 255, 65, 0.1)';
-  
+  // If no session is active, show a message
+  if (!sessionData) {
+    return (
+      <View style={[styles.container, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+        <Text style={[styles.noSessionText, { color: theme.textSecondary }]}>
+          No active session. Start a session to see statistics.
+        </Text>
+      </View>
+    );
+  }
+
   return (
-    <View style={[
-      styles.container, 
-      { 
-        backgroundColor: colors.surface, 
-        borderColor: colors.border,
-        borderRightColor: headerColor,
-        borderRightWidth: 4,
-      }
-    ]}>
-      {/* Current session timer */}
-      {currentSessionTime > 0 && (
-        <View style={styles.timerContainer}>
-          <Text style={[
-            styles.timerText, 
-            { 
-              color: timerColor,
-              // Use a web-compatible approach for shadows
-              ...(Platform.OS === 'web' 
-                ? { textShadow: `0px 0px 8px ${timerGlowColor}` } 
-                : {
-                    textShadowColor: timerGlowColor,
-                    textShadowOffset: { width: 0, height: 0 },
-                    textShadowRadius: 8,
-                  }
-              )
-            }
-          ]}>
-            {formatTimeHHMMSS(currentSessionTime)}
+    <View style={[styles.container, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+      <Text style={[styles.title, { color: theme.text }]}>Session Statistics</Text>
+      
+      <View style={styles.statsContainer}>
+        <View style={styles.statItem}>
+          <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Time</Text>
+          <Text style={[styles.statValue, { color: theme.text }]}>{formatTimeHHMMSS(elapsedTime)}</Text>
+        </View>
+        
+        <View style={styles.statItem}>
+          <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Puzzles</Text>
+          <Text style={[styles.statValue, { color: theme.text }]}>{puzzlesAttempted}</Text>
+        </View>
+        
+        <View style={styles.statItem}>
+          <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Solved</Text>
+          <Text style={[styles.statValue, { color: theme.text }]}>{puzzlesSolved}</Text>
+        </View>
+        
+        <View style={styles.statItem}>
+          <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Success</Text>
+          <Text 
+            style={[
+              styles.statValue, 
+              { 
+                color: successRate >= 70 
+                  ? theme.success 
+                  : successRate >= 40 
+                    ? theme.accent 
+                    : theme.error 
+              }
+            ]}
+          >
+            {successRate}%
           </Text>
         </View>
-      )}
-      
-      {!hideTitle && (
-        <View style={styles.titleContainer}>
-          <Ionicons name="stats-chart" size={20} color={headerColor} style={styles.titleIcon} />
-          <Text style={[styles.title, { color: headerColor }]}>Session Statistics</Text>
-        </View>
-      )}
-      
-      <View style={styles.divider} />
-      
-      <View style={styles.statRow}>
-        <View style={styles.labelContainer}>
-          <Ionicons name="flag-outline" size={18} color={labelColors.attempted} style={styles.labelIcon} />
-          <Text style={[styles.statLabel, { color: labelColors.attempted }]}>Puzzles Attempted:</Text>
-        </View>
-        <Text style={[styles.statValue, { color: colors.text }]}>{stats.puzzlesAttempted}</Text>
-      </View>
-      
-      <View style={styles.statRow}>
-        <View style={styles.labelContainer}>
-          <Ionicons name="checkmark-circle-outline" size={18} color={labelColors.solved} style={styles.labelIcon} />
-          <Text style={[styles.statLabel, { color: labelColors.solved }]}>Puzzles Solved:</Text>
-        </View>
-        <Text style={[styles.statValue, { color: colors.text }]}>{stats.puzzlesSolved}</Text>
-      </View>
-      
-      <View style={styles.statRow}>
-        <View style={styles.labelContainer}>
-          <Ionicons name="trending-up-outline" size={18} color={labelColors.rate} style={styles.labelIcon} />
-          <Text style={[styles.statLabel, { color: labelColors.rate }]}>Success Rate:</Text>
-        </View>
-        <Text style={[
-          styles.statValue, 
-          { 
-            color: getSuccessRateColor(stats.successRate, isDark),
-            fontWeight: 'bold'
-          }
-        ]}>
-          {stats.successRate.toFixed(1)}%
-        </Text>
       </View>
     </View>
   );
 };
 
-// Function to get color based on success rate
-const getSuccessRateColor = (rate: number, isDark: boolean): string => {
-  if (rate >= 80) return isDark ? '#66BB6A' : '#2E7D32'; // Green
-  if (rate >= 60) return isDark ? '#FFB74D' : '#EF6C00'; // Orange
-  if (rate >= 40) return isDark ? '#FFF176' : '#F9A825'; // Yellow
-  return isDark ? '#EF5350' : '#C62828'; // Red
-};
-
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
     borderRadius: 8,
-    marginBottom: 16,
-    width: '100%',
     borderWidth: 1,
+    padding: 16,
+    margin: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
   },
-  timerContainer: {
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  timerText: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    fontFamily: 'monospace',
-    letterSpacing: 2,
-  },
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  titleIcon: {
-    marginRight: 8,
-  },
   title: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
+    marginBottom: 16,
     textAlign: 'center',
   },
-  divider: {
-    height: 1,
-    backgroundColor: 'rgba(0,0,0,0.1)',
-    marginVertical: 8,
+  noSessionText: {
+    textAlign: 'center',
+    fontSize: 16,
+    fontStyle: 'italic',
   },
-  statRow: {
+  statsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-    paddingHorizontal: 8,
+    flexWrap: 'wrap',
   },
-  labelContainer: {
-    flexDirection: 'row',
+  statItem: {
     alignItems: 'center',
-  },
-  labelIcon: {
-    marginRight: 6,
+    minWidth: 70,
+    marginBottom: 8,
   },
   statLabel: {
-    fontSize: 16,
-    fontWeight: '500',
+    fontSize: 14,
+    marginBottom: 4,
   },
   statValue: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
 }); 

@@ -4,10 +4,11 @@
   "description": "Chess training application",
   "main": "index.js",
   "scripts": {
-    "start:mobile": "cd apps/mobile && npm start",
-    "start:web": "cd apps/web && npm start",
-    "build:web": "cd apps/web && npm run build",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "cd apps/mobile && npm start",
+    "android": "cd apps/mobile && npm run android",
+    "ios": "cd apps/mobile && npm run ios",
+    "web": "cd apps/mobile && npm run web",
+    "test": "jest"
   },
   "keywords": [
     "chess",
@@ -22,6 +23,25 @@
     "apps/*"
   ],
   "dependencies": {
-    "expo-asset": "^11.0.4"
+    "expo-asset": "^11.0.4",
+    "expo-device": "^7.0.2"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.25.2",
+    "@babel/plugin-proposal-export-namespace-from": "^7.18.9",
+    "@babel/plugin-transform-export-namespace-from": "^7.25.9",
+    "@babel/plugin-transform-private-methods": "^7.25.9",
+    "@babel/plugin-transform-private-property-in-object": "^7.25.9",
+    "@babel/preset-env": "^7.25.2",
+    "@babel/preset-typescript": "^7.25.2",
+    "@testing-library/jest-native": "^5.4.3",
+    "@testing-library/react-native": "^12.4.3",
+    "@types/jest": "^29.5.12",
+    "babel-jest": "^29.7.0",
+    "jest": "^29.7.0",
+    "jest-expo": "^52.0.0",
+    "react-native-reanimated": "~3.16.1",
+    "ts-jest": "^29.2.6",
+    "typescript": "^5.3.3"
   }
 }

@@ -19,7 +19,7 @@ alwaysApply: true
   - Favor named exports for components.
 
   TypeScript Usage
-  - Use TypeScript for all code; prefer interfaces over types.
+  - Use TypeScript and React Native for all code; prefer interfaces over types.
   - Avoid enums; use maps instead.
   - Use functional components with TypeScript interfaces.
   - Use strict mode in TypeScript for better type safety.
@@ -97,7 +97,6 @@ alwaysApply: true
   4. Use expo-permissions to handle device permissions gracefully.
   5. Implement expo-updates for over-the-air (OTA) updates.
   6. Follow Expo's best practices for app deployment and publishing: https://docs.expo.dev/distribution/introduction/
-  7. Ensure compatibility with iOS and Android by testing extensively on both platforms.
 
   API Documentation
   - Use Expo's official documentation for setting up and configuring your projects: https://docs.expo.dev/
