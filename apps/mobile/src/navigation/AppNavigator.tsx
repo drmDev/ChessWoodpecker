@@ -8,8 +8,6 @@ import { useTheme } from '../contexts/ThemeContext';
 // Define the tab navigator param list
 type TabParamList = {
   Home: undefined;
-  Stats: undefined;
-  Settings: undefined;
 };
 
 const Tab = createBottomTabNavigator<TabParamList>();
@@ -41,10 +39,6 @@ export const AppNavigator: React.FC = () => {
 
             if (route.name === 'Home') {
               iconName = focused ? 'home' : 'home-outline';
-            } else if (route.name === 'Stats') {
-              iconName = focused ? 'stats-chart' : 'stats-chart-outline';
-            } else if (route.name === 'Settings') {
-              iconName = focused ? 'settings' : 'settings-outline';
             }
 
             return <Ionicons name={iconName as any} size={size} color={color} />;

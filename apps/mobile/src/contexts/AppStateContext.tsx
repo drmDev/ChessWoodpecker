@@ -1,25 +1,10 @@
 import React, { createContext, useContext, useReducer, ReactNode } from 'react';
 
-// Types
-export interface Puzzle {
-  id: string;
-  fen: string;
-  pgn: string;
-  moves: string[];
-  rating: number;
-  themes: string[];
-  gameUrl?: string;
-  popularity?: number;
-}
-
 export interface SessionData {
-  currentPuzzleIndex: number;
-  puzzles: Puzzle[];
-  solvedPuzzles: string[];
-  failedPuzzles: string[];
   startTime: number;
   elapsedTime: number;
   endTime?: number;
+  state: 'idle' | 'active' | 'paused';
 }
 
 interface AppState {
@@ -29,11 +14,8 @@ interface AppState {
 
 // Action types
 type Action =
-  | { type: 'START_SESSION'; payload: Puzzle[] }
+  | { type: 'START_SESSION'; payload: any[] }
   | { type: 'END_SESSION' }
-  | { type: 'NEXT_PUZZLE' }
-  | { type: 'MARK_SOLVED'; payload: string }
-  | { type: 'MARK_FAILED'; payload: string }
   | { type: 'TOGGLE_THEME' }
   | { type: 'UPDATE_SESSION_TIME_DELTA'; payload: number };
 
@@ -50,45 +32,15 @@ const reducer = (state: AppState, action: Action): AppState => {
       return {
         ...state,
         sessionData: {
-          currentPuzzleIndex: 0,
-          puzzles: action.payload,
-          solvedPuzzles: [],
-          failedPuzzles: [],
           startTime: Date.now(),
           elapsedTime: 0,
+          state: 'active'
         },
       };
     case 'END_SESSION':
       return {
         ...state,
         sessionData: null
-      };
-    case 'NEXT_PUZZLE':
-      if (!state.sessionData) return state;
-      return {
-        ...state,
-        sessionData: {
-          ...state.sessionData,
-          currentPuzzleIndex: state.sessionData.currentPuzzleIndex + 1,
-        },
-      };
-    case 'MARK_SOLVED':
-      if (!state.sessionData) return state;
-      return {
-        ...state,
-        sessionData: {
-          ...state.sessionData,
-          solvedPuzzles: [...state.sessionData.solvedPuzzles, action.payload],
-        },
-      };
-    case 'MARK_FAILED':
-      if (!state.sessionData) return state;
-      return {
-        ...state,
-        sessionData: {
-          ...state.sessionData,
-          failedPuzzles: [...state.sessionData.failedPuzzles, action.payload],
-        },
       };
     case 'TOGGLE_THEME':
       return {
