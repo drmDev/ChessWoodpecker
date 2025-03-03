@@ -67,21 +67,22 @@ describe('Puzzle Cache Integration Tests', () => {
   ).fen;
 
   beforeEach(() => {
-    // Clear mocks and set up default behavior
+    // Clear mocks before each test
     jest.clearAllMocks();
     
-    (FileSystem.getInfoAsync as jest.Mock).mockResolvedValue({ exists: true });
-    (FileSystem.readAsStringAsync as jest.Mock).mockResolvedValue(JSON.stringify({ 
-      puzzles: {} 
+    // Default mock implementations
+    (FileSystem.getInfoAsync as any).mockResolvedValue({ exists: true });
+    (FileSystem.readAsStringAsync as any).mockResolvedValue(JSON.stringify({
+      puzzles: {}
     }));
-    (FileSystem.writeAsStringAsync as jest.Mock).mockResolvedValue(undefined);
-    (FileSystem.makeDirectoryAsync as jest.Mock).mockResolvedValue(undefined);
+    (FileSystem.writeAsStringAsync as any).mockResolvedValue(undefined);
+    (FileSystem.makeDirectoryAsync as any).mockResolvedValue(undefined);
   });
 
   describe('Cached Puzzle Processing', () => {
     it('should correctly process white-to-move puzzles', async () => {
       // Setup the cache mock to return our puzzle
-      (FileSystem.readAsStringAsync as jest.Mock).mockResolvedValue(JSON.stringify({ 
+      (FileSystem.readAsStringAsync as any).mockResolvedValue(JSON.stringify({ 
         puzzles: {
           white_puzzle: {
             id: 'white_puzzle',
@@ -127,7 +128,7 @@ describe('Puzzle Cache Integration Tests', () => {
       expect(FileSystem.writeAsStringAsync).toHaveBeenCalled();
       
       // Setup the cache mock to return our puzzle
-      (FileSystem.readAsStringAsync as jest.Mock).mockResolvedValue(JSON.stringify({ 
+      (FileSystem.readAsStringAsync as any).mockResolvedValue(JSON.stringify({ 
         puzzles: {
           black_puzzle: {
             id: 'black_puzzle',
@@ -173,7 +174,7 @@ describe('Puzzle Cache Integration Tests', () => {
       await addPuzzleToCache(blackPuzzleResponse);
       
       // Mock the cache to contain both puzzles (simulating what would happen after adding them)
-      (FileSystem.readAsStringAsync as jest.Mock).mockResolvedValue(JSON.stringify({ 
+      (FileSystem.readAsStringAsync as any).mockResolvedValue(JSON.stringify({ 
         puzzles: {
           white_puzzle: {
             id: 'white_puzzle',
