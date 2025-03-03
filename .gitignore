@@ -398,3 +398,15 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+
+# Expo
+.expo/
+
+# Temporary files
+_temp/
+
+# TypeScript configuration
+tsconfig.json
+
+# Cursor editor files
+.cursor/
