@@ -22,12 +22,14 @@ const loadedSounds: Partial<Record<SoundName, Audio.Sound>> = {};
  */
 export const loadSounds = async (): Promise<void> => {
   try {
-    // Initialize Audio
-    await Audio.setAudioModeAsync({
-      playsInSilentModeIOS: true,
-      staysActiveInBackground: false,
-      shouldDuckAndroid: false,
-    });
+    // Initialize Audio on mobile
+    if (Platform.OS !== 'web') {
+      await Audio.setAudioModeAsync({
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: false,
+        shouldDuckAndroid: false,
+      });
+    }
 
     // Create sound objects directly without preloading
     for (const [name, module] of Object.entries(soundModules)) {
