@@ -45,18 +45,7 @@ export const SessionManager: React.FC = () => {
   const handleStartSession = () => {
     dispatch({ 
       type: 'START_SESSION', 
-      payload: [
-        // Sample puzzles - in a real app, these would come from a service
-        {
-          id: '12345',
-          fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
-          pgn: '',
-          moves: ['e2e4', 'e7e5', 'g1f3'],
-          rating: 1500,
-          themes: ['opening'],
-          gameUrl: 'https://lichess.org/training/12345'
-        }
-      ] 
+      payload: [] 
     });
     playSound('success');
   };

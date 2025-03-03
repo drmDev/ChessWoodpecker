@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Platform, TouchableOpacity, Animated } from 'react-native';
+import { View, Text, StyleSheet, Platform, TouchableOpacity } from 'react-native';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAppState } from '../../contexts/AppStateContext';
 import { formatTimeHHMMSS } from '../../utils/timeUtils';
@@ -16,14 +16,6 @@ export const SessionStats: React.FC = () => {
   
   // Calculate stats
   const elapsedTime = sessionData?.elapsedTime || 0;
-  const puzzlesAttempted = sessionData ? 
-    sessionData.solvedPuzzles.length + sessionData.failedPuzzles.length : 0;
-  const puzzlesSolved = sessionData?.solvedPuzzles.length || 0;
-  
-  // Calculate success rate
-  const successRate = puzzlesAttempted > 0 
-    ? Math.round((puzzlesSolved / puzzlesAttempted) * 100) 
-    : 0;
 
   // If no session is active, don't show anything
   if (!sessionData) {
@@ -39,12 +31,12 @@ export const SessionStats: React.FC = () => {
       >
         <View style={styles.titleContainer}>
           <Ionicons 
-            name="stats-chart" 
+            name="time-outline" 
             size={20} 
             color={theme.primary} 
             style={styles.icon} 
           />
-          <Text style={[styles.title, { color: theme.text }]}>Session Statistics</Text>
+          <Text style={[styles.title, { color: theme.text }]}>Session Timer</Text>
         </View>
         <Ionicons 
           name={isCollapsed ? "chevron-down" : "chevron-up"} 
@@ -60,36 +52,6 @@ export const SessionStats: React.FC = () => {
             <Text style={[styles.timerText, { color: theme.text }]}>
               {formatTimeHHMMSS(elapsedTime)}
             </Text>
-          </View>
-          
-          <View style={styles.statsGrid}>
-            <View style={styles.statItem}>
-              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Puzzles</Text>
-              <Text style={[styles.statValue, { color: theme.text }]}>{puzzlesAttempted}</Text>
-            </View>
-            
-            <View style={styles.statItem}>
-              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Solved</Text>
-              <Text style={[styles.statValue, { color: theme.text }]}>{puzzlesSolved}</Text>
-            </View>
-            
-            <View style={styles.statItem}>
-              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Success</Text>
-              <Text 
-                style={[
-                  styles.statValue, 
-                  { 
-                    color: successRate >= 70 
-                      ? theme.success 
-                      : successRate >= 40 
-                        ? theme.accent 
-                        : theme.error 
-                  }
-                ]}
-              >
-                {successRate}%
-              </Text>
-            </View>
           </View>
         </View>
       )}
@@ -143,24 +105,5 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    flexWrap: 'wrap',
-  },
-  statItem: {
-    alignItems: 'center',
-    minWidth: 70,
-    marginBottom: 8,
-  },
-  statLabel: {
-    fontSize: 14,
-    marginBottom: 4,
-  },
-  statValue: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-  },
+  }
 }); 
