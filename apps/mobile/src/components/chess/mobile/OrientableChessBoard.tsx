@@ -1,8 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { StyleSheet, View, Text, Dimensions, TouchableOpacity, Image } from 'react-native';
-import { useTheme } from '../../../contexts/ThemeContext';
+import { StyleSheet, View, Text, Dimensions } from 'react-native';
 import { Chess } from 'chess.js';
-import * as orientationUtils from '../../../utils/chess/orientation-utils';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { ChessPiece } from '../ChessPiece';
+import { Gesture } from 'react-native-gesture-handler';
+import { mapCoordinatesToSquare } from '../../../utils/chess/orientation-utils';
 
 // Type for chess piece
 interface ChessPiece {
@@ -19,43 +21,32 @@ interface OrientableChessBoardProps {
   initialFen?: string;
   orientation?: 'white' | 'black';
   onMove?: (from: string, to: string) => void;
+  onDragStart?: () => void;
+  onDragEnd?: () => void;
   showCoordinates?: boolean;
 }
 
-// Chess piece image mapping
-const PIECE_IMAGES = {
-  'w-p': require('../../../../assets/pieces/wp.png'),
-  'w-n': require('../../../../assets/pieces/wn.png'),
-  'w-b': require('../../../../assets/pieces/wb.png'),
-  'w-r': require('../../../../assets/pieces/wr.png'),
-  'w-q': require('../../../../assets/pieces/wq.png'),
-  'w-k': require('../../../../assets/pieces/wk.png'),
-  'b-p': require('../../../../assets/pieces/bp.png'),
-  'b-n': require('../../../../assets/pieces/bn.png'),
-  'b-b': require('../../../../assets/pieces/bb.png'),
-  'b-r': require('../../../../assets/pieces/br.png'),
-  'b-q': require('../../../../assets/pieces/bq.png'),
-  'b-k': require('../../../../assets/pieces/bk.png'),
-};
-
 /**
- * A custom chessboard component that supports orientation changes
+ * A custom chessboard component that supports orientation changes and drag-and-drop
  */
 const OrientableChessBoard: React.FC<OrientableChessBoardProps> = ({
   initialFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
   orientation = 'white',
   onMove,
+  onDragStart,
+  onDragEnd,
   showCoordinates = true,
 }) => {
-  const { theme } = useTheme();
   const [boardSize, setBoardSize] = useState(calculateBoardSize());
   const [boardOrientation, setBoardOrientation] = useState<'white' | 'black'>(orientation);
   const [position, setPosition] = useState<BoardPosition>({});
   const [selectedSquare, setSelectedSquare] = useState<string | null>(null);
   const [lastMove, setLastMove] = useState<{ from: string; to: string } | null>(null);
+  const [draggedPiece, setDraggedPiece] = useState<{ square: string; piece: string } | null>(null);
   
   const chessRef = useRef<Chess>(new Chess(initialFen));
   const squareSize = boardSize / 8;
+  const boardRef = useRef<View>(null);
 
   // Update board size when window resizes
   useEffect(() => {
@@ -63,18 +54,12 @@ const OrientableChessBoard: React.FC<OrientableChessBoardProps> = ({
       setBoardSize(calculateBoardSize());
     };
     
-    // React Native's Dimensions API changed in newer versions
-    // This handles both older and newer versions
     try {
-      // For newer versions of React Native
       const subscription = Dimensions.addEventListener('change', updateBoardSize);
-      
       return () => {
-        // Clean up the subscription
         subscription.remove();
       };
     } catch (error) {
-      // Fallback for older versions
       console.log('Using legacy Dimensions API');
       return () => {};
     }
@@ -124,47 +109,139 @@ const OrientableChessBoard: React.FC<OrientableChessBoardProps> = ({
     setPosition(newPosition);
   };
 
-  // Toggle the board orientation
-  const toggleOrientation = () => {
-    setBoardOrientation(prev => prev === 'white' ? 'black' : 'white');
+  // Handle piece movement
+  const handleMove = (from: string, to: string) => {
+    console.log('Attempting move:', { from, to });
+    try {
+      const chess = chessRef.current;
+      
+      // Check if this would be a valid move before attempting it
+      const moves = chess.moves({ verbose: true });
+      const isValidMove = moves.some(
+        move => move.from === from && move.to === to
+      );
+      
+      if (!isValidMove) {
+        console.log('Invalid move detected:', { from, to });
+        return false;
+      }
+      
+      const move = chess.move({
+        from,
+        to,
+        promotion: 'q' // Always promote to queen for simplicity
+      });
+      
+      console.log('Move result:', { move, isValid: !!move });
+      
+      if (move) {
+        updatePositionFromChess();
+        setLastMove({ from, to });
+        if (onMove) {
+          onMove(from, to);
+        }
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Move error:', error);
+      return false;
+    }
   };
 
-  // Handle square click
-  const handleSquareClick = (square: string) => {
-    if (selectedSquare) {
-      // If a square is already selected, try to move
-      if (selectedSquare !== square) {
-        try {
-          const chess = chessRef.current;
-          const move = chess.move({
-            from: selectedSquare,
-            to: square,
-            promotion: 'q' // Always promote to queen for simplicity
-          });
-          
-          if (move) {
-            updatePositionFromChess();
-            setLastMove({ from: selectedSquare, to: square });
-            if (onMove) {
-              onMove(selectedSquare, square);
-            }
-          }
-        } catch (error) {
-          console.error('Invalid move:', error);
-        }
-      }
-      // Clear selection regardless
-      setSelectedSquare(null);
-    } else {
-      // Check if the clicked square has a piece of the current player
-      const piece = position[square];
-      const currentPlayer = chessRef.current.turn();
-      
-      if (piece && ((currentPlayer === 'w' && piece.color === 'w') || 
-                   (currentPlayer === 'b' && piece.color === 'b'))) {
-        setSelectedSquare(square);
-      }
+  // JS functions to be called from the worklet context
+  const jsSetDraggedPiece = (square: string, piece: string) => {
+    setDraggedPiece({ square, piece });
+    if (onDragStart) {
+      onDragStart();
     }
+  };
+
+  const jsHandleMove = (fromSquare: string, toSquare: string) => {
+    return handleMove(fromSquare, toSquare);
+  };
+
+  const jsResetDraggedPiece = () => {
+    setDraggedPiece(null);
+    if (onDragEnd) {
+      onDragEnd();
+    }
+  };
+
+  // Get board position for coordinate calculation
+  const getBoardPosition = () => {
+    if (!boardRef.current) return { x: 0, y: 0 };
+    
+    // Measure the board's position on screen
+    let position = { x: 0, y: 0 };
+    boardRef.current.measure((x, y, width, height, pageX, pageY) => {
+      position = { x: pageX, y: pageY };
+    });
+    
+    return position;
+  };
+
+  const createPieceGesture = (square: string, piece: string) => {
+    return Gesture.Pan()
+      .runOnJS(true)  // Run all callbacks on JS thread
+      .onBegin(() => {
+        console.log('Gesture Begin:', { square, piece });
+        jsSetDraggedPiece(square, piece);
+      })
+      .onUpdate((event) => {
+        // Only log occasionally to avoid flooding the console
+        if (Math.random() < 0.05) {
+          console.log('Gesture Update:', {
+            absoluteX: event.absoluteX,
+            absoluteY: event.absoluteY,
+            translationX: event.translationX,
+            translationY: event.translationY
+          });
+        }
+      })
+      .onFinalize((event) => {
+        console.log('Gesture Finalize:', {
+          square,
+          piece,
+          absoluteX: event.absoluteX,
+          absoluteY: event.absoluteY
+        });
+
+        if (draggedPiece) {
+          // Get board position
+          const boardPosition = getBoardPosition();
+          
+          // Calculate board-relative coordinates
+          const relativeX = event.absoluteX - boardPosition.x;
+          const relativeY = event.absoluteY - boardPosition.y;
+          
+          console.log('Board-relative coordinates:', { relativeX, relativeY });
+
+          // Calculate the target square from the relative position
+          const toSquare = mapCoordinatesToSquare(
+            { x: relativeX, y: relativeY },
+            boardOrientation,
+            squareSize
+          );
+
+          console.log('Mapped to square:', toSquare);
+
+          // Only attempt a move if we have a valid target square
+          if (toSquare && toSquare !== draggedPiece.square) {
+            const moveSuccessful = jsHandleMove(draggedPiece.square, toSquare);
+            console.log('Move successful:', moveSuccessful);
+            
+            // Even if the move is not successful, we still reset the dragged piece
+            jsResetDraggedPiece();
+          } else {
+            // If no valid target square or same as source, just reset
+            console.log('No valid target square or same as source, resetting');
+            jsResetDraggedPiece();
+          }
+        } else {
+          jsResetDraggedPiece();
+        }
+      });
   };
 
   // Render a square on the board
@@ -177,8 +254,7 @@ const OrientableChessBoard: React.FC<OrientableChessBoardProps> = ({
     const rank = boardOrientation === 'white' ? 7 - row : row;
     const square = String.fromCharCode(97 + file) + (rank + 1);
     
-    // Determine if this square is selected or part of the last move
-    const isSelected = square === selectedSquare;
+    // Determine if this square is part of the last move
     const isLastMoveFrom = lastMove && square === lastMove.from;
     const isLastMoveTo = lastMove && square === lastMove.to;
     
@@ -187,14 +263,12 @@ const OrientableChessBoard: React.FC<OrientableChessBoardProps> = ({
     
     // Determine background color with highlights
     let backgroundColor = squareColor;
-    if (isSelected) {
-      backgroundColor = '#baca2b'; // Highlight selected square
-    } else if (isLastMoveFrom || isLastMoveTo) {
+    if (isLastMoveFrom || isLastMoveTo) {
       backgroundColor = '#f7f769'; // Highlight last move
     }
     
     return (
-      <TouchableOpacity
+      <View
         key={`${row}-${col}`}
         style={[
           styles.square,
@@ -204,13 +278,12 @@ const OrientableChessBoard: React.FC<OrientableChessBoardProps> = ({
             backgroundColor 
           }
         ]}
-        onPress={() => handleSquareClick(square)}
       >
         {piece && (
-          <Image
-            source={PIECE_IMAGES[`${piece.color}-${piece.type}`]}
-            style={[styles.piece, { width: squareSize * 0.85, height: squareSize * 0.85 }]}
-            resizeMode="contain"
+          <ChessPiece
+            piece={`${piece.color}-${piece.type}`}
+            square={square}
+            gesture={createPieceGesture(square, `${piece.color}-${piece.type}`)}
           />
         )}
         
@@ -229,7 +302,7 @@ const OrientableChessBoard: React.FC<OrientableChessBoardProps> = ({
             )}
           </>
         )}
-      </TouchableOpacity>
+      </View>
     );
   };
 
@@ -243,26 +316,14 @@ const OrientableChessBoard: React.FC<OrientableChessBoardProps> = ({
   };
 
   return (
-    <View style={styles.container}>
-      <View style={[styles.boardContainer, { width: boardSize, height: boardSize }]}>
+    <GestureHandlerRootView style={styles.container}>
+      <View 
+        ref={boardRef}
+        style={[styles.boardContainer, { width: boardSize, height: boardSize }]} 
+      >
         {[0, 1, 2, 3, 4, 5, 6, 7].map(row => renderRow(row))}
       </View>
-      
-      <TouchableOpacity 
-        style={[styles.orientationButton, { backgroundColor: theme.accent }]} 
-        onPress={toggleOrientation}
-      >
-        <Text style={styles.buttonText}>
-          Switch to {boardOrientation === 'white' ? 'Black' : 'White'} View
-        </Text>
-      </TouchableOpacity>
-      
-      {lastMove && (
-        <Text style={[styles.moveText, { color: theme.text }]}>
-          Last move: {lastMove.from} to {lastMove.to}
-        </Text>
-      )}
-    </View>
+    </GestureHandlerRootView>
   );
 };
 
@@ -285,22 +346,6 @@ const styles = StyleSheet.create({
   piece: {
     // Image sizing is handled inline based on square size
   },
-  orientationButton: {
-    marginTop: 16,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 4,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  buttonText: {
-    color: 'white',
-    fontWeight: 'bold',
-  },
-  moveText: {
-    marginTop: 8,
-    fontSize: 14,
-  },
   coordinateLabel: {
     position: 'absolute',
     fontSize: 10,
@@ -316,4 +361,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default OrientableChessBoard; 
+export default OrientableChessBoard;

@@ -1,7 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, StyleSheet, Text, ScrollView, SafeAreaView } from 'react-native';
 import { SessionManager } from '../components/session/SessionManager';
-import { ChessBoard } from '../components/chess/ChessBoard';
 import { useTheme } from '../contexts/ThemeContext';
 import { SessionStats } from '../components/session/SessionStats';
 import { useAppState } from '../contexts/AppStateContext';
@@ -51,18 +50,30 @@ class ErrorBoundary extends React.Component<
 export const MainScreen: React.FC = () => {
   const { theme, themeMode } = useTheme();
   const { state } = useAppState();
-  const isDark = themeMode === 'dark';
   const isSessionActive = state.sessionData !== null;
+  const [isInteractingWithBoard, setIsInteractingWithBoard] = useState(false);
   
   const handleMove = (from: string, to: string) => {
     console.log(`Move from ${from} to ${to}`);
+  };
+
+  const handleDragStart = () => {
+    setIsInteractingWithBoard(true);
+  };
+
+  const handleDragEnd = () => {
+    setIsInteractingWithBoard(false);
   };
   
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       <ErrorBoundary>
         {/* Main content */}
-        <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+        <ScrollView 
+          style={styles.content} 
+          contentContainerStyle={styles.contentContainer}
+          scrollEnabled={!isInteractingWithBoard}
+        >
           {/* Chess board container - only show when session is active */}
           {isSessionActive && (
             <View style={styles.boardContainer}>
@@ -70,6 +81,8 @@ export const MainScreen: React.FC = () => {
                 orientation="white"
                 showCoordinates={true}
                 onMove={handleMove}
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragEnd}
               />
             </View>
           )}

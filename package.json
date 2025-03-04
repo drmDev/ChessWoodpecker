@@ -24,7 +24,8 @@
   ],
   "dependencies": {
     "expo-asset": "^11.0.4",
-    "expo-device": "^7.0.2"
+    "expo-device": "^7.0.2",
+    "react-native-gesture-handler": "^2.24.0"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
