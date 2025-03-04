@@ -5,6 +5,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ChessPiece } from '../ChessPiece';
 import { Gesture } from 'react-native-gesture-handler';
 import { mapCoordinatesToSquare } from '../../../utils/chess/orientation-utils';
+import { playSound } from '../../../utils/sounds';
 
 // Type for chess piece
 interface ChessPiece {
@@ -60,7 +61,6 @@ const OrientableChessBoard: React.FC<OrientableChessBoardProps> = ({
         subscription.remove();
       };
     } catch (error) {
-      console.log('Using legacy Dimensions API');
       return () => {};
     }
   }, []);
@@ -81,7 +81,7 @@ const OrientableChessBoard: React.FC<OrientableChessBoardProps> = ({
       }
       updatePositionFromChess();
     } catch (error) {
-      console.error('Error loading FEN:', error);
+      // Silently handle errors
     }
   }, [initialFen]);
 
@@ -111,32 +111,44 @@ const OrientableChessBoard: React.FC<OrientableChessBoardProps> = ({
 
   // Handle piece movement
   const handleMove = (from: string, to: string) => {
-    console.log('Attempting move:', { from, to });
     try {
       const chess = chessRef.current;
-      
+
       // Check if this would be a valid move before attempting it
       const moves = chess.moves({ verbose: true });
       const isValidMove = moves.some(
         move => move.from === from && move.to === to
       );
-      
+
       if (!isValidMove) {
-        console.log('Invalid move detected:', { from, to });
         return false;
       }
-      
+
       const move = chess.move({
         from,
         to,
         promotion: 'q' // Always promote to queen for simplicity
       });
-      
-      console.log('Move result:', { move, isValid: !!move });
-      
+
       if (move) {
         updatePositionFromChess();
         setLastMove({ from, to });
+
+        // Play appropriate sound based on move type
+        try {
+          // Determine which sound to play
+          let soundToPlay: 'move' | 'capture' | 'check' = 'move';
+          if (move.captured) {
+            soundToPlay = 'capture';
+          } else if (move.san.includes('+')) {
+            soundToPlay = 'check';
+          }
+
+          playSound(soundToPlay);
+        } catch (soundError) {
+          // Silently handle errors
+        }
+
         if (onMove) {
           onMove(from, to);
         }
@@ -144,7 +156,6 @@ const OrientableChessBoard: React.FC<OrientableChessBoardProps> = ({
       }
       return false;
     } catch (error) {
-      console.error('Move error:', error);
       return false;
     }
   };
@@ -185,28 +196,12 @@ const OrientableChessBoard: React.FC<OrientableChessBoardProps> = ({
     return Gesture.Pan()
       .runOnJS(true)  // Run all callbacks on JS thread
       .onBegin(() => {
-        console.log('Gesture Begin:', { square, piece });
         jsSetDraggedPiece(square, piece);
       })
       .onUpdate((event) => {
-        // Only log occasionally to avoid flooding the console
-        if (Math.random() < 0.05) {
-          console.log('Gesture Update:', {
-            absoluteX: event.absoluteX,
-            absoluteY: event.absoluteY,
-            translationX: event.translationX,
-            translationY: event.translationY
-          });
-        }
+        // No-op, just track the gesture
       })
       .onFinalize((event) => {
-        console.log('Gesture Finalize:', {
-          square,
-          piece,
-          absoluteX: event.absoluteX,
-          absoluteY: event.absoluteY
-        });
-
         if (draggedPiece) {
           // Get board position
           const boardPosition = getBoardPosition();
@@ -215,8 +210,6 @@ const OrientableChessBoard: React.FC<OrientableChessBoardProps> = ({
           const relativeX = event.absoluteX - boardPosition.x;
           const relativeY = event.absoluteY - boardPosition.y;
           
-          console.log('Board-relative coordinates:', { relativeX, relativeY });
-
           // Calculate the target square from the relative position
           const toSquare = mapCoordinatesToSquare(
             { x: relativeX, y: relativeY },
@@ -224,18 +217,11 @@ const OrientableChessBoard: React.FC<OrientableChessBoardProps> = ({
             squareSize
           );
 
-          console.log('Mapped to square:', toSquare);
-
           // Only attempt a move if we have a valid target square
           if (toSquare && toSquare !== draggedPiece.square) {
-            const moveSuccessful = jsHandleMove(draggedPiece.square, toSquare);
-            console.log('Move successful:', moveSuccessful);
-            
-            // Even if the move is not successful, we still reset the dragged piece
+            jsHandleMove(draggedPiece.square, toSquare);
             jsResetDraggedPiece();
           } else {
-            // If no valid target square or same as source, just reset
-            console.log('No valid target square or same as source, resetting');
             jsResetDraggedPiece();
           }
         } else {
