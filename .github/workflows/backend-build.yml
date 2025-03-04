@@ -1,0 +1,30 @@
+name: Backend Build
+
+on:
+  push:
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-build.yml'
+  pull_request:
+    paths:
+      - 'backend/**'
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18.x'
+        
+    - name: Install Dependencies
+      working-directory: ./backend
+      run: npm install
+      
+    - name: Build
+      working-directory: ./backend
+      run: npm run build 
