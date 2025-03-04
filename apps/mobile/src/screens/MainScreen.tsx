@@ -23,8 +23,7 @@ class ErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('MainScreen error caught by boundary:', error);
-    console.error('Component stack:', errorInfo.componentStack);
+    // Silently handle errors
   }
 
   render() {
@@ -33,9 +32,7 @@ class ErrorBoundary extends React.Component<
         <View style={styles.errorContainer}>
           <Text style={styles.errorTitle}>Something went wrong</Text>
           <Text style={styles.errorText}>{this.state.error?.message || 'Unknown error'}</Text>
-          <Text style={styles.errorHint}>
-            Check the console logs for more details.
-          </Text>
+          <Text style={styles.errorHint}>Please try again later.</Text>
         </View>
       );
     }
@@ -48,14 +45,10 @@ class ErrorBoundary extends React.Component<
  * MainScreen that displays a custom chessboard with orientation support
  */
 export const MainScreen: React.FC = () => {
-  const { theme, themeMode } = useTheme();
+  const { theme } = useTheme();
   const { state } = useAppState();
   const isSessionActive = state.sessionData !== null;
   const [isInteractingWithBoard, setIsInteractingWithBoard] = useState(false);
-  
-  const handleMove = (from: string, to: string) => {
-    console.log(`Move from ${from} to ${to}`);
-  };
 
   const handleDragStart = () => {
     setIsInteractingWithBoard(true);
@@ -68,26 +61,22 @@ export const MainScreen: React.FC = () => {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       <ErrorBoundary>
-        {/* Main content */}
         <ScrollView 
           style={styles.content} 
           contentContainerStyle={styles.contentContainer}
           scrollEnabled={!isInteractingWithBoard}
         >
-          {/* Chess board container - only show when session is active */}
           {isSessionActive && (
             <View style={styles.boardContainer}>
               <OrientableChessBoard 
                 orientation="white"
                 showCoordinates={true}
-                onMove={handleMove}
                 onDragStart={handleDragStart}
                 onDragEnd={handleDragEnd}
               />
             </View>
           )}
           
-          {/* Welcome message when no session is active */}
           {!isSessionActive && (
             <View style={[styles.welcomeContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}>
               <Text style={[styles.welcomeTitle, { color: theme.text }]}>Welcome to Chess Woodpecker</Text>
@@ -97,14 +86,8 @@ export const MainScreen: React.FC = () => {
             </View>
           )}
           
-          {/* Session controls */}
-          <View style={styles.controlsContainer}>
-            {/* Session manager */}
-            <SessionManager />
-            
-            {/* Session stats */}
-            <SessionStats />
-          </View>
+          <SessionManager />
+          {isSessionActive && <SessionStats />}
         </ScrollView>
       </ErrorBoundary>
     </SafeAreaView>
@@ -119,68 +102,47 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    padding: 8,
-    paddingTop: 24,
-    paddingBottom: 24,
-    paddingHorizontal: 16,
-  },
-  boardContainer: {
-    width: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
     padding: 16,
   },
-  controlsContainer: {
-    marginTop: 8,
+  boardContainer: {
+    alignItems: 'center',
+    marginBottom: 16,
   },
   welcomeContainer: {
+    padding: 16,
     borderRadius: 8,
     borderWidth: 1,
-    padding: 24,
-    marginVertical: 48,
-    marginHorizontal: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    marginBottom: 16,
   },
   welcomeTitle: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 16,
-    textAlign: 'center',
+    marginBottom: 8,
   },
   welcomeText: {
     fontSize: 16,
-    textAlign: 'center',
     lineHeight: 24,
   },
   errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
     padding: 16,
-    backgroundColor: '#ffeeee',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#ff0000',
-    margin: 16,
-    maxWidth: '90%',
   },
   errorTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#cc0000',
     marginBottom: 8,
+    color: '#e74c3c',
   },
   errorText: {
-    color: '#cc0000',
-    fontSize: 14,
+    fontSize: 16,
     marginBottom: 8,
+    textAlign: 'center',
+    color: '#2c3e50',
   },
   errorHint: {
-    color: '#666666',
-    fontSize: 12,
-    fontStyle: 'italic',
+    fontSize: 14,
+    color: '#7f8c8d',
   },
 }); 

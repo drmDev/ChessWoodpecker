@@ -6,11 +6,9 @@ import { Asset } from 'expo-asset';
  */
 export const preloadAssets = async (assets: number[]): Promise<void> => {
   try {
-    console.log(`Preloading ${assets.length} assets...`);
-    const result = await Asset.loadAsync(assets);
-    console.log(`Successfully preloaded ${result.length} assets`);
+    await Asset.loadAsync(assets);
   } catch (error) {
-    console.error('Error preloading assets:', error);
+    // Silently handle errors
   }
 };
 
@@ -21,12 +19,9 @@ export const preloadAssets = async (assets: number[]): Promise<void> => {
  */
 export const getAssetUri = async (asset: number): Promise<string | null> => {
   try {
-    console.log(`Getting URI for asset: ${asset}`);
     const downloadedAsset = await Asset.fromModule(asset).downloadAsync();
-    console.log(`Asset downloaded:`, downloadedAsset);
     return downloadedAsset?.uri || null;
   } catch (error) {
-    console.error('Error getting asset URI:', error);
     return null;
   }
 }; 

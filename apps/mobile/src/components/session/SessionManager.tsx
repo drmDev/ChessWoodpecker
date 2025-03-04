@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAppState } from '../../contexts/AppStateContext';
 import { timerService } from '../../services/TimerService';
@@ -17,10 +17,8 @@ export interface SessionData {
 }
 
 export const SessionManager: React.FC = () => {
-  // Get state and dispatch from context
   const { state, dispatch } = useAppState();
-  const { theme, themeMode } = useTheme();
-  const isDark = themeMode === 'dark';
+  const { theme } = useTheme();
   
   // Extract session data from state
   const sessionData = state.sessionData;
@@ -52,7 +50,7 @@ export const SessionManager: React.FC = () => {
   
   const handleEndSession = () => {
     dispatch({ type: 'END_SESSION' });
-    playSound('move');
+    playSound('success');
   };
   
   return (
@@ -80,32 +78,22 @@ export const SessionManager: React.FC = () => {
 
 const styles = StyleSheet.create({
   container: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    padding: 16,
     borderRadius: 8,
     borderWidth: 1,
-    padding: 12,
-    marginHorizontal: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    marginVertical: 8,
   },
   button: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 24,
+    padding: 12,
     borderRadius: 8,
-    minWidth: 180,
   },
   buttonText: {
     color: 'white',
-    fontWeight: 'bold',
-    marginLeft: 8,
     fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
   },
 }); 
