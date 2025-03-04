@@ -6,7 +6,7 @@ import puzzleRoutes from './routes/puzzleRoutes';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 8082;
+const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 app.use(cors());
@@ -22,4 +22,6 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
+    console.log('Environment:', process.env.NODE_ENV);
+    console.log('Current working directory:', process.cwd());
 });
