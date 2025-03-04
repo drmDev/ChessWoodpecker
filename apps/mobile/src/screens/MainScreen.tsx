@@ -5,43 +5,95 @@ import { ChessBoard } from '../components/chess/ChessBoard';
 import { useTheme } from '../contexts/ThemeContext';
 import { SessionStats } from '../components/session/SessionStats';
 import { useAppState } from '../contexts/AppStateContext';
+import OrientableChessBoard from '../components/chess/mobile/OrientableChessBoard';
 
+/**
+ * Error boundary component to catch rendering errors
+ */
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('MainScreen error caught by boundary:', error);
+    console.error('Component stack:', errorInfo.componentStack);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorTitle}>Something went wrong</Text>
+          <Text style={styles.errorText}>{this.state.error?.message || 'Unknown error'}</Text>
+          <Text style={styles.errorHint}>
+            Check the console logs for more details.
+          </Text>
+        </View>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+/**
+ * MainScreen that displays a custom chessboard with orientation support
+ */
 export const MainScreen: React.FC = () => {
   const { theme, themeMode } = useTheme();
   const { state } = useAppState();
   const isDark = themeMode === 'dark';
   const isSessionActive = state.sessionData !== null;
   
+  const handleMove = (from: string, to: string) => {
+    console.log(`Move from ${from} to ${to}`);
+  };
+  
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-      {/* Main content */}
-      <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
-        {/* Chess board container - only show when session is active */}
-        {isSessionActive && (
-          <View style={styles.boardContainer}>
-            <ChessBoard isDark={isDark} />
-          </View>
-        )}
-        
-        {/* Welcome message when no session is active */}
-        {!isSessionActive && (
-          <View style={[styles.welcomeContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-            <Text style={[styles.welcomeTitle, { color: theme.text }]}>Welcome to Chess Woodpecker</Text>
-            <Text style={[styles.welcomeText, { color: theme.textSecondary }]}>
-              Click "Start Session" below to begin practicing chess puzzles.
-            </Text>
-          </View>
-        )}
-        
-        {/* Session controls */}
-        <View style={styles.controlsContainer}>
-          {/* Session manager */}
-          <SessionManager />
+      <ErrorBoundary>
+        {/* Main content */}
+        <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+          {/* Chess board container - only show when session is active */}
+          {isSessionActive && (
+            <View style={styles.boardContainer}>
+              <OrientableChessBoard 
+                orientation="white"
+                showCoordinates={true}
+                onMove={handleMove}
+              />
+            </View>
+          )}
           
-          {/* Session stats */}
-          <SessionStats />
-        </View>
-      </ScrollView>
+          {/* Welcome message when no session is active */}
+          {!isSessionActive && (
+            <View style={[styles.welcomeContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+              <Text style={[styles.welcomeTitle, { color: theme.text }]}>Welcome to Chess Woodpecker</Text>
+              <Text style={[styles.welcomeText, { color: theme.textSecondary }]}>
+                Click "Start Session" below to begin practicing chess puzzles.
+              </Text>
+            </View>
+          )}
+          
+          {/* Session controls */}
+          <View style={styles.controlsContainer}>
+            {/* Session manager */}
+            <SessionManager />
+            
+            {/* Session stats */}
+            <SessionStats />
+          </View>
+        </ScrollView>
+      </ErrorBoundary>
     </SafeAreaView>
   );
 };
@@ -60,12 +112,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   boardContainer: {
-    aspectRatio: 1,
-    justifyContent: 'center',
+    width: '100%',
     alignItems: 'center',
-    marginTop: 32,
-    marginBottom: 16,
-    alignSelf: 'center',
+    justifyContent: 'center',
+    padding: 16,
   },
   controlsContainer: {
     marginTop: 8,
@@ -94,5 +144,30 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: 'center',
     lineHeight: 24,
+  },
+  errorContainer: {
+    padding: 16,
+    backgroundColor: '#ffeeee',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ff0000',
+    margin: 16,
+    maxWidth: '90%',
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#cc0000',
+    marginBottom: 8,
+  },
+  errorText: {
+    color: '#cc0000',
+    fontSize: 14,
+    marginBottom: 8,
+  },
+  errorHint: {
+    color: '#666666',
+    fontSize: 12,
+    fontStyle: 'italic',
   },
 }); 
