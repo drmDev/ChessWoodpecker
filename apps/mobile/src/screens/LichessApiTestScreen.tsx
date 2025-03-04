@@ -13,11 +13,7 @@ import {
 import { useTheme } from '../contexts/ThemeContext';
 import { LichessPuzzleResponse, processPuzzleData, Puzzle } from '../models/PuzzleModel';
 import OrientableChessBoard from '../components/chess/mobile/OrientableChessBoard';
-import { 
-  BoardOrientation, 
-  getOrientationForPuzzle, 
-  shouldFlipBoard
-} from '../utils/chess/orientation-utils';
+import { BoardOrientation } from '@utils/chess/orientation-utils';
 
 // Interface for puzzle collection
 interface PuzzleCollection {

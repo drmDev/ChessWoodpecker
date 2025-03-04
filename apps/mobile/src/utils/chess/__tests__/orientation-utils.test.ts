@@ -1,9 +1,7 @@
 import { 
-  shouldFlipBoard, 
-  getOrientationForPuzzle,
-  BoardOrientation,
   mapCoordinatesToSquare,
-  mapSquareToCoordinates
+  mapSquareToCoordinates,
+  BoardOrientation
 } from '../orientation-utils';
 
 describe('orientation-utils', () => {
@@ -59,30 +57,8 @@ describe('orientation-utils', () => {
     });
 
     test('handles invalid square notation', () => {
-      // We'll test the validation logic by passing valid squares but with invalid piece sizes
-      // This will trigger the error handling without TypeScript complaints
       expect(() => mapSquareToCoordinates('a1', 'white', -1)).toThrow();
       expect(() => mapSquareToCoordinates('h8', 'white', 0)).toThrow();
-    });
-  });
-
-  describe('shouldFlipBoard', () => {
-    it('should return false for white orientation', () => {
-      expect(shouldFlipBoard('white')).toBe(false);
-    });
-
-    it('should return true for black orientation', () => {
-      expect(shouldFlipBoard('black')).toBe(true);
-    });
-  });
-
-  describe('getOrientationForPuzzle', () => {
-    it('should return white orientation when white to move', () => {
-      expect(getOrientationForPuzzle(true)).toBe('white');
-    });
-
-    it('should return black orientation when black to move', () => {
-      expect(getOrientationForPuzzle(false)).toBe('black');
     });
   });
 }); 

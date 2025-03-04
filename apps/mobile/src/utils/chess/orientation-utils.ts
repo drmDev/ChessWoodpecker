@@ -4,7 +4,6 @@ export type BoardOrientation = 'white' | 'black';
 
 /**
  * Maps algebraic notation to board coordinates based on orientation
- * Note: This method is currently only used in tests, may be needed for future drag-and-drop functionality
  */
 export function mapSquareToCoordinates(
   square: Square, 
@@ -47,7 +46,6 @@ export function mapSquareToCoordinates(
 
 /**
  * Maps board coordinates to algebraic notation based on orientation
- * Note: This method is currently only used in tests, may be needed for future drag-and-drop functionality
  */
 export function mapCoordinatesToSquare(
   coordinates: { x: number, y: number },
@@ -81,128 +79,4 @@ export function mapCoordinatesToSquare(
   const rank = String(rankIndex + 1);
   
   return `${file}${rank}` as Square;
-}
-
-/**
- * Determines if a coordinate label should be shown based on orientation
- * Note: This method is currently unused, may be needed for future coordinate label rendering
- */
-export function shouldShowCoordinateLabel(
-  type: 'file' | 'rank',
-  position: number,
-  orientation: 'white' | 'black'
-): boolean {
-  if (type === 'file') {
-    return orientation === 'white' ? position === 7 : position === 0;
-  } else {
-    return orientation === 'white' ? position === 0 : position === 7;
-  }
-}
-
-/**
- * Gets the coordinate label value based on position and orientation
- * Note: This method is currently unused, may be needed for future coordinate label rendering
- */
-export function getCoordinateLabel(
-  type: 'file' | 'rank',
-  position: number,
-  orientation: 'white' | 'black'
-): string {
-  if (type === 'file') {
-    const index = orientation === 'white' ? position : 7 - position;
-    return String.fromCharCode(97 + index);
-  } else {
-    const index = orientation === 'white' ? 7 - position : position;
-    return String(index + 1);
-  }
-}
-
-/**
- * Calculates the translation values for piece movement based on orientation
- * Note: This method is currently unused, may be needed for future piece animation
- */
-export function calculatePieceTranslation(
-  translationX: number,
-  translationY: number,
-  orientation: 'white' | 'black'
-): { translationX: number, translationY: number } {
-  if (orientation === 'white') {
-    return { translationX, translationY };
-  } else {
-    return { translationX: -translationX, translationY: -translationY };
-  }
-}
-
-/**
- * Determines if the board should be flipped based on orientation
- * Actively used in LichessApiTestScreen for board orientation
- */
-export function shouldFlipBoard(orientation: BoardOrientation): boolean {
-  return orientation === 'black';
-}
-
-/**
- * Gets the appropriate board orientation based on whose turn it is
- * Actively used in LichessApiTestScreen for auto-orientation
- */
-export function getOrientationForPuzzle(isWhiteToMove: boolean): BoardOrientation {
-  return isWhiteToMove ? 'white' : 'black';
-}
-
-/**
- * Calculates the transform style for the board based on orientation
- * Note: This method is currently unused, may be needed for future board animation
- */
-export function calculateBoardTransform(isFlipped: boolean): { transform: { rotate: string } } {
-  return {
-    transform: {
-      rotate: isFlipped ? '180deg' : '0deg'
-    }
-  };
-}
-
-/**
- * Maps touch coordinates to board coordinates based on orientation
- * Note: This method is currently unused, may be needed for future touch interaction
- */
-export function mapTouchCoordinates(
-  x: number,
-  y: number,
-  boardSize: number,
-  isFlipped: boolean
-): { file: number; rank: number } {
-  // Calculate square size
-  const squareSize = boardSize / 8;
-  
-  // Get the file and rank (0-7)
-  let file = Math.floor(x / squareSize);
-  let rank = Math.floor(y / squareSize);
-  
-  // If board is flipped, invert coordinates
-  if (isFlipped) {
-    file = 7 - file;
-    rank = 7 - rank;
-  }
-  
-  return { file, rank };
-}
-
-/**
- * Maps a square name (e.g., 'e4') to board coordinates
- * Note: This method is currently unused, may be needed for future coordinate conversion
- */
-export function squareToCoordinates(square: string): { file: number; rank: number } {
-  const file = square.charCodeAt(0) - 'a'.charCodeAt(0);
-  const rank = 8 - parseInt(square[1]);
-  return { file, rank };
-}
-
-/**
- * Maps board coordinates to a square name
- * Note: This method is currently unused, may be needed for future coordinate conversion
- */
-export function coordinatesToSquare(file: number, rank: number): string {
-  const fileChar = String.fromCharCode('a'.charCodeAt(0) + file);
-  const rankNum = 8 - rank;
-  return `${fileChar}${rankNum}`;
 } 
