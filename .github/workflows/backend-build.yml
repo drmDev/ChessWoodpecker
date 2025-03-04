@@ -11,7 +11,7 @@ on:
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     
     steps:
     - uses: actions/checkout@v3
@@ -20,11 +20,25 @@ jobs:
       uses: actions/setup-node@v3
       with:
         node-version: '18.x'
+        cache: 'npm'
+        cache-dependency-path: backend/package-lock.json
         
     - name: Install Dependencies
       working-directory: ./backend
-      run: npm install
+      run: npm ci
       
     - name: Build
       working-directory: ./backend
-      run: npm run build 
+      run: npm run build
+      
+    - name: Check Build Output
+      working-directory: ./backend
+      run: |
+        if [ ! -d "dist" ]; then
+          echo "Build failed - dist directory not created"
+          exit 1
+        fi
+        if [ ! -f "dist/server.js" ]; then
+          echo "Build failed - server.js not found in dist"
+          exit 1
+        fi 

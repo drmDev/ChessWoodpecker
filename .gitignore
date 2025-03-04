@@ -405,9 +405,6 @@ FodyWeavers.xsd
 # Temporary files
 _temp/
 
-# TypeScript configuration
-tsconfig.json
-
 # Cursor editor files
 .cursor/
 
