@@ -25,6 +25,7 @@
   "dependencies": {
     "expo-asset": "^11.0.4",
     "expo-device": "^7.0.2",
+    "pg": "^8.13.3",
     "react-native-gesture-handler": "^2.24.0"
   },
   "devDependencies": {

@@ -410,3 +410,5 @@ tsconfig.json
 
 # Cursor editor files
 .cursor/
+
+.env
