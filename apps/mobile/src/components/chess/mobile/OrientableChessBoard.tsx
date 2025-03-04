@@ -39,7 +39,6 @@ const OrientableChessBoard: React.FC<OrientableChessBoardProps> = ({
   showCoordinates = true,
 }) => {
   const [boardSize, setBoardSize] = useState(calculateBoardSize());
-  const [boardOrientation, setBoardOrientation] = useState<'white' | 'black'>(orientation);
   const [position, setPosition] = useState<BoardPosition>({});
   const [selectedSquare, setSelectedSquare] = useState<string | null>(null);
   const [lastMove, setLastMove] = useState<{ from: string; to: string } | null>(null);
@@ -64,6 +63,11 @@ const OrientableChessBoard: React.FC<OrientableChessBoardProps> = ({
       return () => {};
     }
   }, []);
+
+  // Update position when orientation changes
+  useEffect(() => {
+    updatePositionFromChess();
+  }, [orientation]);
 
   // Calculate optimal board size
   function calculateBoardSize() {
@@ -213,7 +217,7 @@ const OrientableChessBoard: React.FC<OrientableChessBoardProps> = ({
           // Calculate the target square from the relative position
           const toSquare = mapCoordinatesToSquare(
             { x: relativeX, y: relativeY },
-            boardOrientation,
+            orientation,
             squareSize
           );
 
@@ -236,8 +240,8 @@ const OrientableChessBoard: React.FC<OrientableChessBoardProps> = ({
     const squareColor = isBlack ? '#769656' : '#eeeed2';
     
     // Map visual position to algebraic notation based on orientation
-    const file = boardOrientation === 'white' ? col : 7 - col;
-    const rank = boardOrientation === 'white' ? 7 - row : row;
+    const file = orientation === 'white' ? col : 7 - col;
+    const rank = orientation === 'white' ? 7 - row : row;
     const square = String.fromCharCode(97 + file) + (rank + 1);
     
     // Determine if this square is part of the last move
@@ -283,7 +287,7 @@ const OrientableChessBoard: React.FC<OrientableChessBoardProps> = ({
             )}
             {col === 0 && (
               <Text style={[styles.coordinateLabel, styles.rankLabel]}>
-                {boardOrientation === 'white' ? 8 - row : row + 1}
+                {orientation === 'white' ? 8 - row : row + 1}
               </Text>
             )}
           </>

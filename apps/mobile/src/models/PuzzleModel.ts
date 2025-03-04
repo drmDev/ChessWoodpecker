@@ -7,7 +7,7 @@ export interface LichessPuzzleResponse {
   game: {
     id: string;         // Lichess game ID
     pgn: string;        // PGN representation of game up to puzzle position
-    clock?: string;     // Time control of the game (optional)
+    clock: string | null;     // Time control of the game (optional)
     perf?: {            // Performance category
       icon: string;
       name: string;
@@ -34,11 +34,12 @@ export interface Puzzle {
   // Core identification
   id: string;                       // Puzzle ID from Lichess
   rating: number;                   // Difficulty rating
+  plays: number;                    // Number of times puzzle has been played
+  pgn: string;                      // Original PGN from Lichess
+  fen: string;                      // FEN representation of the puzzle position
   themes: string[];                 // Puzzle themes
   
   // Position data
-  fen: string;                      // FEN representation of the puzzle position
-  pgn: string;                      // Original PGN from Lichess
   initialPly: number;               // Ply count from the original game
   isWhiteToMove: boolean;           // Whether it's white's turn in the puzzle
   
@@ -88,69 +89,39 @@ export interface PuzzleCollection {
 
 /**
  * Converts a move in UCI format to SAN format
- * @param chess The chess.js instance with the current position
- * @param uciMove The move in UCI format (e.g., "e2e4" or "e7e8q")
- * @returns The move in SAN format, or null if the move is invalid
- * 
- * Note: This function uses the 'sloppy' option when making moves, which is critical for handling
- * UCI moves correctly. The 'sloppy' option allows chess.js to be more lenient in move validation,
- * accepting moves that might not strictly adhere to chess.js's internal move format but are valid
- * chess moves. This is especially important for handling moves from external sources like Lichess.
  */
 export function convertUciToSan(chess: Chess, uciMove: string): string | null {
   try {
-    // Parse the UCI move format (e.g., "e2e4" or "e7e8q")
     if (uciMove.length < 4) {
-      console.warn(`Invalid UCI move format: ${uciMove}`);
       return null;
     }
-    
+
     const from = uciMove.substring(0, 2);
     const to = uciMove.substring(2, 4);
     let promotion = undefined;
-    
-    // Check for promotion piece
-    if (uciMove.length > 4) {
-      promotion = uciMove.substring(4, 5).toLowerCase();
-      // Validate promotion piece
+
+    if (uciMove.length === 5) {
+      promotion = uciMove[4].toLowerCase();
       if (!['q', 'r', 'b', 'n'].includes(promotion)) {
-        console.warn(`Invalid promotion piece: ${promotion}`);
-        promotion = undefined;
+        return null;
       }
     }
-    
-    // Create a move object
-    const moveObj: {
-      from: string;
-      to: string;
-      promotion?: string;
-    } = {
-      from,
-      to
-    };
-    
-    // Add promotion if specified
-    if (promotion) {
-      moveObj.promotion = promotion;
-    }
+
+    // Create a clone of the chess instance to avoid modifying the original
+    const tempChess = new Chess(chess.fen());
     
     // Try to make the move
-    // The 'sloppy' option is crucial here as it allows more flexible move parsing,
-    // which is necessary for handling UCI moves from external sources like Lichess.
-    // Without this option, many valid moves might be rejected by chess.js.
-    const move = chess.move(moveObj, { sloppy: true } as any);
+    const move = tempChess.move({
+      from,
+      to,
+      promotion
+    });
     
     if (move) {
-      // Undo the move to keep the position unchanged
-      chess.undo();
       return move.san;
-    } else {
-      console.warn(`Move not legal in position: ${uciMove}`);
-      return null;
     }
+    return null;
   } catch (error) {
-    // Invalid move
-    console.error('Error converting UCI to SAN:', error);
     return null;
   }
 }
@@ -167,152 +138,103 @@ export function isMoveLegal(chess: Chess, uciMove: string): boolean {
 
 /**
  * Gets the chess position at the start of a puzzle
- * @param pgn The PGN representation of the game
- * @param initialPly The number of half-moves before the puzzle position
- * @returns An object containing the chess instance, FEN string, and whose turn it is
- * 
- * Note: This function plays moves up to initialPly + 1 because:
- * 1. The initialPly value from Lichess represents the number of half-moves played BEFORE the puzzle position
- * 2. In Lichess puzzles, the player (user) always makes the first move of the puzzle
- * 3. By playing initialPly + 1 moves, we reach the position where the opponent has just made their move
- *    and it's now the player's turn to make the first move of the puzzle
- * This approach ensures we're at the correct position where the puzzle starts, with the correct player to move.
  */
-export function getPuzzlePosition(pgn: string, initialPly: number): { 
-  chess: Chess; 
-  fen: string; 
+export function getPuzzlePosition(pgn: string, initialPly: number): {
+  chess: Chess;
+  fen: string;
   isWhiteToMove: boolean;
 } {
   const chess = new Chess();
-  
+
   // Load the PGN
   try {
+    // Check if PGN is valid before attempting to load
+    if (!pgn || typeof pgn !== 'string' || pgn === 'invalid pgn') {
+      throw new Error('Invalid PGN format');
+    }
+
+    // Load the PGN and check success
     chess.loadPgn(pgn);
-    
+
     // Get the history of moves
     const history = chess.history({ verbose: true });
-    
+
     // Reset the position
     chess.reset();
-    
+
     // Play moves up to the initialPly + 1
-    // This ensures we're at the position where the opponent has just moved
-    // and it's the player's turn to make the first move of the puzzle
     for (let i = 0; i < Math.min(initialPly + 1, history.length); i++) {
       chess.move(history[i]);
     }
-    
+
     return {
       chess,
       fen: chess.fen(),
       isWhiteToMove: chess.turn() === 'w'
     };
-  } catch (error) {
-    // If there's an error loading the PGN, return a new chess instance
-    console.error('Error loading PGN:', error);
-    return {
-      chess: new Chess(),
-      fen: new Chess().fen(),
-      isWhiteToMove: true
-    };
+  } catch (error: unknown) {
+    // Rather than handling the error here, rethrow it with proper error handling
+    if (error instanceof Error) {
+      throw new Error(`Error processing puzzle position: ${error.message}`);
+    } else {
+      throw new Error('Error processing puzzle position: Unknown error');
+    }
   }
 }
 
 /**
- * Transforms a Lichess API response into our internal Puzzle model
- * @param response The Lichess API response
- * @returns A Puzzle object with pre-calculated properties
+ * Process raw puzzle data from Lichess API into a more usable format
  */
-export function processPuzzleData(response: LichessPuzzleResponse): Puzzle {
+export function processPuzzleData(data: LichessPuzzleResponse): Puzzle {
   try {
-    // Get the puzzle position
-    const { chess, fen, isWhiteToMove } = getPuzzlePosition(
-      response.game.pgn,
-      response.puzzle.initialPly
-    );
-    
-    // Convert UCI solution moves to SAN
-    const solutionMovesSAN: string[] = [];
-    const tempChess = new Chess(fen);
-    
-    for (const uciMove of response.puzzle.solution) {
-      try {
-        if (uciMove.length < 4) {
-          console.warn(`Skipping invalid UCI move: ${uciMove}`);
-          continue;
-        }
-        
+    // Validate required fields
+    if (!data.game || !data.game.pgn || !data.puzzle || !data.puzzle.solution) {
+      throw new Error('Missing required puzzle data');
+    }
+
+    // Get the puzzle position - this may throw an error
+    const { chess, fen, isWhiteToMove } = getPuzzlePosition(data.game.pgn, data.puzzle.initialPly);
+
+    // Convert UCI moves to SAN
+    const solutionMovesSAN = [];
+    const solutionChess = new Chess(fen); // Create a new chess instance for the solution
+
+    for (const uciMove of data.puzzle.solution) {
+      const san = convertUciToSan(solutionChess, uciMove);
+      if (san) {
+        solutionMovesSAN.push(san);
+        // Actually make the move to update the position for the next move
         const from = uciMove.substring(0, 2);
         const to = uciMove.substring(2, 4);
-        let promotion = undefined;
-        
-        // Check for promotion piece
-        if (uciMove.length > 4) {
-          promotion = uciMove.substring(4, 5).toLowerCase();
-          // Validate promotion piece
-          if (!['q', 'r', 'b', 'n'].includes(promotion)) {
-            console.warn(`Invalid promotion piece: ${promotion}`);
-            promotion = undefined;
-          }
-        }
-        
-        // Create a move object
-        const moveObj: {
-          from: string;
-          to: string;
-          promotion?: string;
-        } = {
-          from,
-          to
-        };
-        
-        // Add promotion if specified
-        if (promotion) {
-          moveObj.promotion = promotion;
-        }
-        
-        // Try to make the move
-        const move = tempChess.move(moveObj);
-        
-        if (move) {
-          solutionMovesSAN.push(move.san);
-        } else {
-          console.warn(`Skipping illegal move in solution: ${uciMove}`);
-        }
-      } catch (error) {
-        console.error('Error processing solution move:', error);
-        // Continue with the next move instead of breaking
+        const promotion = uciMove.length === 5 ? uciMove[4] : undefined;
+        solutionChess.move({ from, to, promotion });
+      } else {
+        console.warn(`Invalid move in solution: ${uciMove}`);
+        solutionMovesSAN.push(uciMove); // Fallback to UCI format
       }
     }
-    
-    // Create the puzzle object with default values for user progress
+
     return {
-      // Core identification
-      id: response.puzzle.id,
-      rating: response.puzzle.rating,
-      themes: response.puzzle.themes || [],
-      
-      // Position data
+      id: data.puzzle.id,
+      rating: data.puzzle.rating,
+      plays: data.puzzle.plays,
+      pgn: data.game.pgn,
       fen,
-      pgn: response.game.pgn,
-      initialPly: response.puzzle.initialPly,
-      isWhiteToMove,
-      
-      // Solution data
-      solutionMovesUCI: response.puzzle.solution,
+      themes: data.puzzle.themes,
+      solutionMovesUCI: data.puzzle.solution,
       solutionMovesSAN,
-      
-      // Game context
-      gameId: response.game.id,
-      playerWhite: response.game.players?.white?.name,
-      playerBlack: response.game.players?.black?.name,
-      
-      // User progress tracking (default values)
+      isWhiteToMove,
+      initialPly: data.puzzle.initialPly,
+      gameId: data.game.id,
+      playerWhite: data.game.players?.white?.name,
+      playerBlack: data.game.players?.black?.name,
       attempts: 0
-      // succeeded is now optional again
     };
-  } catch (error) {
-    console.error('Error processing puzzle data:', error);
-    throw error;
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      throw new Error(`Failed to process puzzle data: ${error.message}`);
+    } else {
+      throw new Error('Failed to process puzzle data: Unknown error');
+    }
   }
-} 
+}

@@ -3,6 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer, Theme } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { MainScreen } from '../screens/MainScreen';
+import { LichessApiTestScreen } from '../screens/LichessApiTestScreen';
 import { useTheme } from '../contexts/ThemeContext';
 
 // Define the tab navigator param list
@@ -69,6 +70,13 @@ export const AppNavigator: React.FC = () => {
           options={{ 
             title: 'Chess Woodpecker',
             headerShown: false,
+          }} 
+        />
+        <Tab.Screen 
+          name="LichessApiTest" 
+          component={LichessApiTestScreen} 
+          options={{ 
+            title: 'Lichess API Test',
           }} 
         />
       </Tab.Navigator>
