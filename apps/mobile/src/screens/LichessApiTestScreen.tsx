@@ -27,7 +27,6 @@ export const LichessApiTestScreen: React.FC = () => {
   const [currentPuzzleId, setCurrentPuzzleId] = useState<string | null>(null);
   const [currentPuzzle, setCurrentPuzzle] = useState<Puzzle | null>(null);
   const [processingError, setProcessingError] = useState<string | null>(null);
-  const [apiResponse, setApiResponse] = useState<LichessPuzzleResponse | null>(null);
   const [orientation, setOrientation] = useState<BoardOrientation>('white');
   const [isInteractingWithBoard, setIsInteractingWithBoard] = useState(false);
 
@@ -48,7 +47,7 @@ export const LichessApiTestScreen: React.FC = () => {
       // Load the default collection JSON
       const defaultCollection = require('../../assets/puzzles/default-collection.json');
       setPuzzleCollection(defaultCollection);
-    } catch (error) {
+    } catch (_error) {
       setProcessingError('Error loading puzzle collection');
     }
   };
@@ -57,7 +56,6 @@ export const LichessApiTestScreen: React.FC = () => {
     setIsLoading(true);
     setCurrentPuzzle(null);
     setProcessingError(null);
-    setApiResponse(null);
     
     try {
       // Get all puzzle IDs from the collection
@@ -72,7 +70,7 @@ export const LichessApiTestScreen: React.FC = () => {
       
       // Fetch the puzzle
       await fetchPuzzle(randomId);
-    } catch (error) {
+    } catch (_error) {
       setProcessingError('Error fetching random puzzle');
       setIsLoading(false);
     }
@@ -93,18 +91,15 @@ export const LichessApiTestScreen: React.FC = () => {
       
       const data = await response.json();
       
-      // Store the API response
-      setApiResponse(data);
-      
       // Process the puzzle data
       try {
         const processedPuzzle = processPuzzleData(data);
         setCurrentPuzzle(processedPuzzle);
-      } catch (processingError: any) {
-        setProcessingError(`Error processing puzzle data: ${processingError?.message || processingError}`);
+      } catch (_processingError: any) {
+        setProcessingError(`Error processing puzzle data: ${_processingError?.message || _processingError}`);
       }
-    } catch (error: any) {
-      setProcessingError(`Error fetching puzzle ${id}: ${error?.message || error}`);
+    } catch (_error: any) {
+      setProcessingError(`Error fetching puzzle ${id}: ${_error?.message || _error}`);
     } finally {
       setIsLoading(false);
     }

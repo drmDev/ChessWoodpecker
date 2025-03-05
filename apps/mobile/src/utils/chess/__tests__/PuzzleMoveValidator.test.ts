@@ -1,5 +1,5 @@
 import { Chess } from 'chess.js';
-import { validatePuzzleMove, PuzzleValidationResult, moveToUCI, debugValidateMove } from '../PuzzleMoveValidator';
+import { validatePuzzleMove } from '../PuzzleMoveValidator';
 
 describe('PuzzleMoveValidator', () => {
   describe('validatePuzzleMove', () => {

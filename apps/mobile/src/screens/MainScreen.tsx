@@ -68,6 +68,7 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
+    padding: 16,
   },
   content: {
     flex: 1,
@@ -111,5 +112,30 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 8,
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  headerText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  section: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 12,
+  },
+  statsContainer: {
+    marginBottom: 24,
+  },
+  subText: {
+    fontSize: 16,
+    marginBottom: 16,
+    textAlign: 'center',
   },
 }); 

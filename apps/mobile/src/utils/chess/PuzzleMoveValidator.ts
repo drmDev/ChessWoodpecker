@@ -1,4 +1,4 @@
-import { Chess, Move } from 'chess.js';
+import { Chess } from 'chess.js';
 
 export interface UserMove {
   from: string;

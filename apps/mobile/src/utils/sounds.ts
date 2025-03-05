@@ -34,8 +34,8 @@ async function initializeAudio(): Promise<void> {
       playThroughEarpieceAndroid: false,
     });
     isInitialized = true;
-  } catch (error) {
-    throw error;
+  } catch (_error) {
+    throw _error;
   }
 }
 
@@ -65,12 +65,12 @@ export const loadSounds = async (): Promise<void> => {
         );
         
         loadedSounds[name as SoundName] = sound;
-      } catch (e) {
+      } catch (_e) {
         // Silently handle errors for individual sounds
       }
     }
-  } catch (error) {
-    throw error;
+  } catch (_error) {
+    throw _error;
   }
 };
 
@@ -143,7 +143,7 @@ export const playSound = async (name: SoundName): Promise<void> => {
         }
         
         resolve();
-      } catch (error) {
+      } catch (_error) {
         resolve();
       }
     }, 100); // Longer delay to ensure we're out of any gesture context
@@ -165,7 +165,7 @@ export const unloadSounds = async (): Promise<void> => {
             }
             await sound.unloadAsync();
           }
-        } catch (e) {
+        } catch (_e) {
           // Silently handle errors for individual sounds
         }
       }
@@ -178,7 +178,7 @@ export const unloadSounds = async (): Promise<void> => {
     
     // Reset initialization state
     isInitialized = false;
-  } catch (error) {
+  } catch (_error) {
     // Silently handle errors
   }
 }; 

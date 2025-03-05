@@ -7,7 +7,7 @@ import { useTheme } from '../../../contexts/ThemeContext';
 
 export const MobileChessBoard = () => {
   const [game, setGame] = useState(new Chess());
-  const { theme, themeMode } = useTheme();
+  const { themeMode } = useTheme();
   const isDark = themeMode === 'dark';
   const [boardSize, setBoardSize] = useState(calculateBoardSize());
 
@@ -43,7 +43,7 @@ export const MobileChessBoard = () => {
   const attemptPlaySound = useCallback(async (soundName: 'move' | 'capture' | 'check') => {
     try {
       await playSound(soundName);
-    } catch (error) {
+    } catch (_error) {
       // Silently handle errors
     }
   }, []);
@@ -81,7 +81,7 @@ export const MobileChessBoard = () => {
         // Play the sound immediately after the move is confirmed
         try {
           await attemptPlaySound(soundToPlay);
-        } catch (soundError) {
+        } catch (_soundError) {
           // Silently handle errors
         }
         
@@ -89,7 +89,7 @@ export const MobileChessBoard = () => {
       }
       
       return move !== null;
-    } catch (e) {
+    } catch (_e) {
       return false;
     }
   }, [game, attemptPlaySound]);
