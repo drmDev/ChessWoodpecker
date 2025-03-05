@@ -9,9 +9,21 @@ import { ErrorBoundary } from '../components/shared/ErrorBoundary';
 import { PuzzleCacheService } from '../services/PuzzleCacheService';
 import { puzzleService } from '../services/PuzzleService';
 import { Ionicons } from '@expo/vector-icons';
+import { usePuzzleGame } from '../hooks/usePuzzleGame';
 
 // Only show debug buttons in development
 const isDev = __DEV__;
+
+const TurnIndicator: React.FC<{ isWhiteToMove: boolean }> = ({ isWhiteToMove }) => {
+  const { theme } = useTheme();
+  return (
+    <View style={[styles.turnIndicator, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+      <Text style={[styles.turnIndicatorText, { color: theme.text }]}>
+        {isWhiteToMove ? "White" : "Black"} to move
+      </Text>
+    </View>
+  );
+};
 
 /**
  * MainScreen that displays a custom chessboard with orientation support
@@ -22,6 +34,9 @@ export const MainScreen: React.FC = () => {
   const isSessionActive = state.sessionData !== null;
   const [isInteractingWithBoard, setIsInteractingWithBoard] = useState(false);
   const [isDebugCollapsed, setIsDebugCollapsed] = useState(true);
+  
+  // Use the puzzle game hook
+  const { currentPosition, handleMove } = usePuzzleGame();
 
   const handleDragStart = () => {
     setIsInteractingWithBoard(true);
@@ -110,12 +125,14 @@ export const MainScreen: React.FC = () => {
         >
           {isSessionActive && state.sessionData?.currentPuzzle && !state.sessionData?.isLoading && (
             <View style={styles.boardContainer}>
+              <TurnIndicator isWhiteToMove={state.sessionData.currentPuzzle.isWhiteToMove} />
               <OrientableChessBoard 
                 orientation={state.sessionData.currentPuzzle.isWhiteToMove ? 'white' : 'black'}
                 showCoordinates={true}
                 onDragStart={handleDragStart}
                 onDragEnd={handleDragEnd}
-                initialFen={state.sessionData.currentPuzzle.fen}
+                onMove={handleMove}
+                initialFen={currentPosition || state.sessionData.currentPuzzle.fen}
               />
             </View>
           )}
@@ -257,6 +274,17 @@ const styles = StyleSheet.create({
   subText: {
     fontSize: 16,
     marginBottom: 16,
+    textAlign: 'center',
+  },
+  turnIndicator: {
+    padding: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginBottom: 12,
+  },
+  turnIndicatorText: {
+    fontSize: 16,
+    fontWeight: 'bold',
     textAlign: 'center',
   },
 }); 

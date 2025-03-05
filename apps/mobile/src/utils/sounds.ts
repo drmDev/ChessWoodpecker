@@ -75,79 +75,61 @@ export const loadSounds = async (): Promise<void> => {
 };
 
 /**
- * Plays a specific sound
+ * Plays a specific sound and returns a promise that resolves when the sound finishes
  * @param name The name of the sound to play
  */
 export const playSound = async (name: SoundName): Promise<void> => {
-  // Create a new promise that resolves after the sound is played
-  return new Promise((resolve) => {
-    // Use setTimeout with a delay to break out of the current execution context
-    setTimeout(async () => {
-      try {
-        // Try to recreate the sound object each time
-        try {
-          // Get the asset URI
-          const uri = await getAssetUri(soundModules[name]);
-          if (!uri) {
-            resolve();
-            return;
-          }
-          
-          // Create a fresh sound object each time
-          const { sound } = await Audio.Sound.createAsync(
-            { uri },
-            { shouldPlay: false, volume: 1.0 }
-          );
-          
-          // Store the new sound object
-          loadedSounds[name] = sound;
-          
-          // Play immediately
-          await sound.playAsync();
-          
-          // Add a delay to ensure the sound has time to be heard
-          await new Promise(r => setTimeout(r, 200));
-          
-          // Unload after playing to prevent resource issues
-          await sound.unloadAsync();
-          
-        } catch (createError) {
-          // Fall back to existing sound if available
-          let sound = loadedSounds[name];
-          
-          if (!sound) {
-            await loadSounds();
-            sound = loadedSounds[name];
-            
-            if (!sound) {
-              throw new Error(`Failed to load sound ${name}`);
+  try {
+    // Get or create the sound object
+    let sound = loadedSounds[name];
+    if (!sound) {
+      // Get the asset URI
+      const uri = await getAssetUri(soundModules[name]);
+      if (!uri) return;
+      
+      // Create a fresh sound object
+      const { sound: newSound } = await Audio.Sound.createAsync(
+        { uri },
+        { shouldPlay: false, volume: 1.0 }
+      );
+      sound = newSound;
+      loadedSounds[name] = sound;
+    }
+
+    // Get current status
+    const status = await sound.getStatusAsync();
+    
+    // If sound is already playing, stop it
+    if (status.isLoaded && status.isPlaying) {
+      await sound.stopAsync();
+    }
+
+    // Reset position and play
+    await sound.setPositionAsync(0);
+    await sound.setVolumeAsync(1.0);
+    
+    // Play the sound and wait for it to finish
+    await new Promise<void>((resolve) => {
+      sound!.playAsync()
+        .then(() => {
+          // Wait for the sound duration plus a small buffer
+          setTimeout(async () => {
+            try {
+              // Only unload if it's a one-off sound like success/failure
+              if (name === 'success' || name === 'failure') {
+                await sound!.unloadAsync();
+                delete loadedSounds[name];
+              }
+            } finally {
+              resolve();
             }
-          }
-          
-          // Try to get the status
-          const status = await sound.getStatusAsync();
-          
-          // If sound is already playing, stop it first
-          if (status.isLoaded && status.isPlaying) {
-            await sound.stopAsync();
-          }
-          
-          // Reset position and play with maximum volume
-          await sound.setPositionAsync(0);
-          await sound.setVolumeAsync(1.0);
-          
-          await sound.playAsync();
-          
-          // Add a delay to ensure the sound has time to be heard
-          await new Promise(r => setTimeout(r, 200));
-        }
-        
-        resolve();
-      } catch (_error) {
-        resolve();
-      }
-    }, 100); // Longer delay to ensure we're out of any gesture context
-  });
+          }, 500); // Increased buffer time to ensure sound completes
+        })
+        .catch(() => resolve()); // Resolve on error to prevent hanging
+    });
+  } catch (_error) {
+    // Silently handle errors
+  }
 };
 
 /**

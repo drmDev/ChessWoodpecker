@@ -45,42 +45,25 @@ export const SessionManager: React.FC = () => {
   
   // Handle session actions
   const handleStartSession = async () => {
-    // Start session with loading state
-    dispatch({ 
-      type: 'START_SESSION', 
-      payload: {
-        startTime: Date.now(),
-        elapsedTime: 0,
-        state: 'active',
-        currentPuzzle: null,
-        isLoading: true
-      }
-    });
-
     try {
-      // Fetch first puzzle
       const puzzle = await puzzleService.fetchRandomPuzzle();
-      
-      // Update session with puzzle
-      dispatch({
-        type: 'UPDATE_SESSION',
+      dispatch({ 
+        type: 'START_SESSION', 
         payload: {
+          startTime: Date.now(),
+          elapsedTime: 0,
+          state: 'active',
           currentPuzzle: puzzle,
           isLoading: false
         }
       });
-      
-      playSound('success');
     } catch (error) {
-      console.error('Error fetching puzzle:', error);
-      dispatch({ type: 'END_SESSION' });
-      // TODO: Show error toast/alert
+      console.error('Failed to start session:', error);
     }
   };
   
   const handleEndSession = () => {
     dispatch({ type: 'END_SESSION' });
-    playSound('success');
   };
 
   // Show debug info for solution
