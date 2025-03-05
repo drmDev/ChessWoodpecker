@@ -193,7 +193,7 @@ export function processPuzzleData(data: LichessPuzzleResponse): Puzzle {
     }
 
     // Get the puzzle position - this may throw an error
-    const { chess, fen, isWhiteToMove } = getPuzzlePosition(data.game.pgn, data.puzzle.initialPly);
+    const { fen, isWhiteToMove } = getPuzzlePosition(data.game.pgn, data.puzzle.initialPly);
 
     // Convert UCI moves to SAN
     const solutionMovesSAN = [];

@@ -7,7 +7,7 @@ import { Asset } from 'expo-asset';
 export const preloadAssets = async (assets: number[]): Promise<void> => {
   try {
     await Asset.loadAsync(assets);
-  } catch (error) {
+  } catch (_error) {
     // Silently handle errors
   }
 };
@@ -21,7 +21,7 @@ export const getAssetUri = async (asset: number): Promise<string | null> => {
   try {
     const downloadedAsset = await Asset.fromModule(asset).downloadAsync();
     return downloadedAsset?.uri || null;
-  } catch (error) {
+  } catch (_error) {
     return null;
   }
 }; 

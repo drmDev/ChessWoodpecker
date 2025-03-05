@@ -7,15 +7,12 @@ import { Gesture } from 'react-native-gesture-handler';
 import { mapCoordinatesToSquare } from '../../../utils/chess/orientation-utils';
 import { playSound } from '../../../utils/sounds';
 
-// Type for chess piece
-interface ChessPiece {
-  type: 'p' | 'n' | 'b' | 'r' | 'q' | 'k';
-  color: 'w' | 'b';
-}
-
 // Type for board position
 type BoardPosition = {
-  [square: string]: ChessPiece | null;
+  [square: string]: {
+    type: 'p' | 'n' | 'b' | 'r' | 'q' | 'k';
+    color: 'w' | 'b';
+  } | null;
 };
 
 interface OrientableChessBoardProps {
@@ -59,7 +56,7 @@ const OrientableChessBoard: React.FC<OrientableChessBoardProps> = ({
       return () => {
         subscription.remove();
       };
-    } catch (error) {
+    } catch (_error) {
       return () => {};
     }
   }, []);
@@ -84,7 +81,7 @@ const OrientableChessBoard: React.FC<OrientableChessBoardProps> = ({
         chess.load(initialFen);
       }
       updatePositionFromChess();
-    } catch (error) {
+    } catch (_error) {
       // Silently handle errors
     }
   }, [initialFen]);
@@ -149,7 +146,7 @@ const OrientableChessBoard: React.FC<OrientableChessBoardProps> = ({
           }
 
           playSound(soundToPlay);
-        } catch (soundError) {
+        } catch (_soundError) {
           // Silently handle errors
         }
 
@@ -159,7 +156,7 @@ const OrientableChessBoard: React.FC<OrientableChessBoardProps> = ({
         return true;
       }
       return false;
-    } catch (error) {
+    } catch (_error) {
       return false;
     }
   };
@@ -336,9 +333,6 @@ const styles = StyleSheet.create({
   fileLabel: {
     bottom: 2,
     right: 2,
-  },
-  piece: {
-    // Image sizing is handled inline based on square size
   },
   rankLabel: {
     left: 2,
