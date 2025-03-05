@@ -1,4 +1,6 @@
-import { LichessPuzzleResponse, processPuzzleData, Puzzle } from '../models/PuzzleModel';
+import { LichessPuzzleResponse, processPuzzleData, Puzzle, getPuzzlePosition, convertUciToSan } from '../models/PuzzleModel';
+import { PuzzleCacheService } from './PuzzleCacheService';
+import { Chess } from 'chess.js';
 
 // Load the default collection JSON
 const defaultCollection = require('../../assets/puzzles/default-collection.json');
@@ -14,7 +16,7 @@ class PuzzleService {
   }
 
   /**
-   * Fetches a random puzzle from the backend
+   * Fetches a random puzzle, checking cache first
    * @returns Processed puzzle data
    */
   async fetchRandomPuzzle(): Promise<Puzzle> {
@@ -28,8 +30,19 @@ class PuzzleService {
       // Select a random puzzle ID
       const randomIndex = Math.floor(Math.random() * allPuzzleIds.length);
       const randomId = allPuzzleIds[randomIndex];
+
+      console.log(`[PuzzleService] Fetching puzzle ${randomId}`);
+
+      // Check cache first
+      const cachedPuzzle = await PuzzleCacheService.getPuzzle(randomId);
+      if (cachedPuzzle) {
+        console.log(`[PuzzleService] Cache HIT for puzzle ${randomId}`);
+        return cachedPuzzle;
+      }
       
-      // Fetch the puzzle from our backend
+      console.log(`[PuzzleService] Cache MISS for puzzle ${randomId}, fetching from backend...`);
+      
+      // If not in cache, fetch from backend
       const response = await fetch(`${this.baseUrl}/puzzles/${randomId}`);
       
       if (!response.ok) {
@@ -38,27 +51,43 @@ class PuzzleService {
       
       const data = await response.json();
       
-      // Convert backend response to Lichess format for processing
-      const lichessFormat: LichessPuzzleResponse = {
-        game: {
-          id: data.lichess_puzzle_id,
-          pgn: data.pgn,
-          clock: null
-        },
-        puzzle: {
-          id: data.lichess_puzzle_id,
-          rating: 0, // We don't store this in our backend yet
-          plays: 0,  // We don't store this in our backend yet
-          solution: data.solution,
-          initialPly: data.initial_ply,
-          themes: [] // We don't store this in our backend yet
-        }
-      };
+      // Process the puzzle data with only essential information
+      const { fen, isWhiteToMove } = getPuzzlePosition(data.pgn, data.initial_ply);
+      const chess = new Chess(fen);
       
-      // Process the puzzle data
-      return processPuzzleData(lichessFormat);
+      const puzzle: Puzzle = {
+        id: data.lichess_puzzle_id,
+        pgn: data.pgn,
+        initialPly: data.initial_ply,
+        solutionMovesUCI: data.solution,
+        solutionMovesSAN: data.solution.map((move: string) => {
+          const san = convertUciToSan(chess, move);
+          if (san) {
+            // Make the move to update position for next conversion
+            const from = move.substring(0, 2);
+            const to = move.substring(2, 4);
+            const promotion = move.length === 5 ? move[4] : undefined;
+            chess.move({ from, to, promotion });
+          }
+          return san || move; // Fallback to UCI if conversion fails
+        }),
+        fen,
+        isWhiteToMove,
+        // Initialize user progress
+        attempts: 0,
+        // Empty non-essential fields
+        rating: 0,
+        plays: 0,
+        themes: []
+      };
+
+      // Store in cache
+      await PuzzleCacheService.storePuzzle(puzzle);
+      console.log(`[PuzzleService] Stored puzzle ${randomId} in cache`);
+      
+      return puzzle;
     } catch (error: any) {
-      console.error('Error fetching random puzzle:', error);
+      console.error('[PuzzleService] Error fetching random puzzle:', error);
       throw new Error(`Failed to fetch puzzle: ${error.message}`);
     }
   }
