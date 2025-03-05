@@ -77,7 +77,7 @@ apps/mobile/
 │   ├── navigation/          # Navigation configuration
 │   │   └── AppNavigator.tsx     # Main navigation setup with bottom tabs
 │   ├── screens/             # Application screens
-│   │   ├── MainScreen.tsx       # Main screen with chess board
+│   │   ├── MainScreen.tsx       # Main application screen
 │   │   └── LichessApiTestScreen.tsx  # Screen for testing Lichess API
 │   ├── services/            # Business logic services
 │   │   ├── PuzzleService.ts     # Manages puzzle data and Lichess API
@@ -126,24 +126,34 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({ isDark = false }) => {
 }
 ```
 
-### 2. Lichess Puzzle Integration
+### 2. Puzzle Integration
 
-The application integrates with the Lichess Puzzle API to provide a variety of chess puzzles. The `LichessApiTestScreen` demonstrates fetching puzzle data from the API.
+The application integrates with our backend API to provide a variety of chess puzzles. The puzzles are cached locally for offline access and better performance.
 
 ```typescript
-// LichessApiTestScreen.tsx (simplified)
-const fetchPuzzle = async (id: string, index: number) => {
+// PuzzleService.ts (simplified)
+async fetchRandomPuzzle(): Promise<Puzzle> {
   try {
-    // Make API request to Lichess
-    const response = await fetch(`https://lichess.org/api/puzzle/${id}`);
+    // Check cache first
+    const cachedPuzzle = await PuzzleCacheService.getPuzzle(id);
+    if (cachedPuzzle) {
+      return cachedPuzzle;
+    }
+    
+    // If not in cache, fetch from backend
+    const response = await fetch(`${this.baseUrl}/puzzles/${id}`);
     const data = await response.json();
     
-    // Log the response
-    console.log(`Puzzle ${id} Response:`, data);
+    // Process and cache the puzzle
+    const processedPuzzle = processPuzzleData(data);
+    await PuzzleCacheService.storePuzzle(processedPuzzle);
+    
+    return processedPuzzle;
   } catch (error) {
-    console.error(`Error fetching puzzle ${id}:`, error);
+    console.error('Error fetching puzzle:', error);
+    throw error;
   }
-};
+}
 ```
 
 ### 3. Theme Management
@@ -234,46 +244,8 @@ export const AppNavigator: React.FC = () => {
             headerShown: false,
           }} 
         />
-        <Tab.Screen 
-          name="LichessApiTest" 
-          component={LichessApiTestScreen} 
-          options={{ 
-            title: 'Lichess API Test',
-            headerShown: true,
-          }} 
-        />
       </Tab.Navigator>
     </NavigationContainer>
   );
 };
 ```
-
-## Development Workflow
-
-### Running the App
-
-```bash
-# Start the development server
-npm start
-
-# Run on Android
-npm run android
-
-# Run on iOS
-npm run ios
-```
-
-### Testing
-
-```bash
-# Run tests
-npm test
-```
-
-## Future Enhancements
-
-1. Full puzzle solving workflow with success/failure tracking
-2. Spaced repetition system for puzzle practice
-3. Offline support with locally cached puzzles
-4. More detailed statistics and progress tracking
-5. User accounts and cloud synchronization
