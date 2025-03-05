@@ -48,17 +48,19 @@ const OrientableChessBoard: React.FC<OrientableChessBoardProps> = ({
   // Update board size when window resizes
   useEffect(() => {
     const updateBoardSize = () => {
-      setBoardSize(calculateBoardSize());
+      const { width, height } = Dimensions.get('window');
+      // Make the board fill 100% of the width, with appropriate height
+      // Use the full width of the screen, minus any padding
+      const size = Math.min(width, height * 0.8);
+      setBoardSize(size);
     };
-    
-    try {
-      const subscription = Dimensions.addEventListener('change', updateBoardSize);
-      return () => {
-        subscription.remove();
-      };
-    } catch (_error) {
-      return () => {};
-    }
+
+    updateBoardSize();
+    const subscription = Dimensions.addEventListener('change', updateBoardSize);
+
+    return () => {
+      subscription.remove();
+    };
   }, []);
 
   // Update position when orientation changes
@@ -79,6 +81,8 @@ const OrientableChessBoard: React.FC<OrientableChessBoardProps> = ({
       const chess = chessRef.current;
       if (initialFen) {
         chess.load(initialFen);
+        // Clear the last move highlight when a new position is loaded
+        setLastMove(null);
       }
       updatePositionFromChess();
     } catch (_error) {
