@@ -80,14 +80,14 @@ export const ChessPiece: React.FC<ChessPieceProps> = ({
 
 const styles = StyleSheet.create({
   piece: {
-    position: 'absolute',
-    width: '100%',
+    alignItems: 'center',
     height: '100%',
     justifyContent: 'center',
-    alignItems: 'center',
+    position: 'absolute',
+    width: '100%',
   },
   pieceImage: {
-    width: '85%',
     height: '85%',
+    width: '85%',
   },
 }); 

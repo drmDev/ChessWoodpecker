@@ -241,21 +241,70 @@ export const LichessApiTestScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  boardContainer: {
+    alignSelf: 'center',
+    aspectRatio: 1,
+    marginVertical: 16,
+    width: '100%',
+  },
+  button: {
+    alignItems: 'center',
+    backgroundColor: '#4CAF50',
+    borderRadius: 4,
+    justifyContent: 'center',
+    marginBottom: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  buttonText: {
+    color: '#FFF',
+    fontWeight: 'bold',
+  },
   container: {
     flex: 1,
+  },
+  errorContainer: {
+    borderRadius: 4,
+    marginBottom: 16,
+    padding: 16,
+  },
+  errorText: {
+    color: '#FFF',
+  },
+  infoRow: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    marginBottom: 8,
+  },
+  label: {
+    fontWeight: 'bold',
+    marginRight: 8,
+    width: 100,
+  },
+  linkButton: {
+    alignItems: 'center',
+    borderRadius: 4,
+    borderWidth: 1,
+    justifyContent: 'center',
+    marginTop: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  linkButtonText: {
+    fontWeight: 'bold',
   },
   scrollContent: {
     padding: 16,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 16,
-  },
   section: {
+    borderRadius: 8,
     marginBottom: 24,
     padding: 16,
-    borderRadius: 8,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -273,72 +322,23 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 12,
   },
-  infoRow: {
-    flexDirection: 'row',
-    marginBottom: 8,
-    alignItems: 'flex-start',
+  smallButton: {
+    alignItems: 'center',
+    backgroundColor: '#4CAF50',
+    borderRadius: 4,
+    flex: 1,
+    justifyContent: 'center',
+    marginHorizontal: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 10,
   },
-  label: {
-    width: 100,
+  title: {
+    fontSize: 24,
     fontWeight: 'bold',
-    marginRight: 8,
+    marginBottom: 16,
   },
   value: {
     flex: 1,
     flexWrap: 'wrap',
-  },
-  button: {
-    backgroundColor: '#4CAF50',
-    borderRadius: 4,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  buttonText: {
-    color: '#FFF',
-    fontWeight: 'bold',
-  },
-  errorContainer: {
-    padding: 16,
-    borderRadius: 4,
-    marginBottom: 16,
-  },
-  errorText: {
-    color: '#FFF',
-  },
-  linkButton: {
-    borderWidth: 1,
-    borderRadius: 4,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 16,
-  },
-  linkButtonText: {
-    fontWeight: 'bold',
-  },
-  boardContainer: {
-    width: '100%',
-    aspectRatio: 1,
-    marginVertical: 16,
-    alignSelf: 'center',
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 8,
-  },
-  smallButton: {
-    flex: 1,
-    backgroundColor: '#4CAF50',
-    borderRadius: 4,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginHorizontal: 4,
   },
 }); 

@@ -5,41 +5,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { SessionStats } from '../components/session/SessionStats';
 import { useAppState } from '../contexts/AppStateContext';
 import OrientableChessBoard from '../components/chess/mobile/OrientableChessBoard';
-
-/**
- * Error boundary component to catch rendering errors
- */
-class ErrorBoundary extends React.Component<
-  { children: React.ReactNode },
-  { hasError: boolean; error: Error | null }
-> {
-  constructor(props: { children: React.ReactNode }) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-
-  static getDerivedStateFromError(error: Error) {
-    return { hasError: true, error };
-  }
-
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    // Silently handle errors
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorTitle}>Something went wrong</Text>
-          <Text style={styles.errorText}>{this.state.error?.message || 'Unknown error'}</Text>
-          <Text style={styles.errorHint}>Please try again later.</Text>
-        </View>
-      );
-    }
-
-    return this.props.children;
-  }
-}
+import { ErrorBoundary } from '../components/shared/ErrorBoundary';
 
 /**
  * MainScreen that displays a custom chessboard with orientation support
@@ -66,13 +32,14 @@ export const MainScreen: React.FC = () => {
           contentContainerStyle={styles.contentContainer}
           scrollEnabled={!isInteractingWithBoard}
         >
-          {isSessionActive && (
+          {isSessionActive && state.sessionData?.currentPuzzle && !state.sessionData?.isLoading && (
             <View style={styles.boardContainer}>
               <OrientableChessBoard 
-                orientation="white"
+                orientation={state.sessionData.currentPuzzle.isWhiteToMove ? 'white' : 'black'}
                 showCoordinates={true}
                 onDragStart={handleDragStart}
                 onDragEnd={handleDragEnd}
+                initialFen={state.sessionData.currentPuzzle.fen}
               />
             </View>
           )}
@@ -95,6 +62,10 @@ export const MainScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  boardContainer: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
   container: {
     flex: 1,
   },
@@ -104,45 +75,41 @@ const styles = StyleSheet.create({
   contentContainer: {
     padding: 16,
   },
-  boardContainer: {
+  errorContainer: {
     alignItems: 'center',
-    marginBottom: 16,
+    flex: 1,
+    justifyContent: 'center',
+    padding: 16,
+  },
+  errorHint: {
+    color: '#7f8c8d',
+    fontSize: 14,
+  },
+  errorText: {
+    color: '#2c3e50',
+    fontSize: 16,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  errorTitle: {
+    color: '#e74c3c',
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 8,
   },
   welcomeContainer: {
-    padding: 16,
     borderRadius: 8,
     borderWidth: 1,
     marginBottom: 16,
-  },
-  welcomeTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 8,
+    padding: 16,
   },
   welcomeText: {
     fontSize: 16,
     lineHeight: 24,
   },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 16,
-  },
-  errorTitle: {
-    fontSize: 20,
+  welcomeTitle: {
+    fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 8,
-    color: '#e74c3c',
-  },
-  errorText: {
-    fontSize: 16,
-    marginBottom: 8,
-    textAlign: 'center',
-    color: '#2c3e50',
-  },
-  errorHint: {
-    fontSize: 14,
-    color: '#7f8c8d',
   },
 }); 
