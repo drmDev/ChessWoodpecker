@@ -63,47 +63,47 @@ const styles = StyleSheet.create({
   container: {
     borderRadius: 8,
     borderWidth: 1,
-    marginHorizontal: 16,
+    elevation: 2,
     marginBottom: 16,
+    marginHorizontal: 16,
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 2,
-    overflow: 'hidden',
   },
   headerContainer: {
+    alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
     padding: 12,
-  },
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
   },
   icon: {
     marginRight: 8,
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: 'bold',
   },
   statsContainer: {
     padding: 16,
     paddingTop: 0,
   },
   timerContainer: {
-    flexDirection: 'row',
     alignItems: 'center',
+    borderBottomColor: '#e0e0e0',
+    borderBottomWidth: 1,
+    flexDirection: 'row',
     marginBottom: 16,
     paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
   },
   timerText: {
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
     fontSize: 20,
     fontWeight: 'bold',
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
+  title: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  titleContainer: {
+    alignItems: 'center',
+    flexDirection: 'row',
   }
 }); 

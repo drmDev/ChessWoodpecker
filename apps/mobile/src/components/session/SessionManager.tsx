@@ -1,10 +1,12 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAppState } from '../../contexts/AppStateContext';
 import { timerService } from '../../services/TimerService';
+import { puzzleService } from '../../services/PuzzleService';
 import { Ionicons } from '@expo/vector-icons';
 import { playSound } from '../../utils/sounds';
+import { Puzzle } from '../../models/PuzzleModel';
 
 // Session state type
 export type SessionState = 'idle' | 'active' | 'paused';
@@ -14,6 +16,8 @@ export interface SessionData {
   startTime: number | null;
   elapsedTime: number;
   state: SessionState;
+  currentPuzzle: Puzzle | null;
+  isLoading: boolean;
 }
 
 export const SessionManager: React.FC = () => {
@@ -40,17 +44,56 @@ export const SessionManager: React.FC = () => {
   }, [isActive]);
   
   // Handle session actions
-  const handleStartSession = () => {
+  const handleStartSession = async () => {
+    // Start session with loading state
     dispatch({ 
       type: 'START_SESSION', 
-      payload: [] 
+      payload: {
+        startTime: Date.now(),
+        elapsedTime: 0,
+        state: 'active',
+        currentPuzzle: null,
+        isLoading: true
+      }
     });
-    playSound('success');
+
+    try {
+      // Fetch first puzzle
+      const puzzle = await puzzleService.fetchRandomPuzzle();
+      
+      // Update session with puzzle
+      dispatch({
+        type: 'UPDATE_SESSION',
+        payload: {
+          currentPuzzle: puzzle,
+          isLoading: false
+        }
+      });
+      
+      playSound('success');
+    } catch (error) {
+      console.error('Error fetching puzzle:', error);
+      dispatch({ type: 'END_SESSION' });
+      // TODO: Show error toast/alert
+    }
   };
   
   const handleEndSession = () => {
     dispatch({ type: 'END_SESSION' });
     playSound('success');
+  };
+
+  // Show debug info for solution
+  const renderDebugInfo = () => {
+    if (!sessionData?.currentPuzzle) return null;
+    
+    return (
+      <View style={styles.debugInfo}>
+        <Text style={[styles.debugText, { color: theme.textSecondary }]}>
+          Debug - Solution: {sessionData.currentPuzzle.solutionMovesUCI.join(', ')}
+        </Text>
+      </View>
+    );
   };
   
   return (
@@ -64,36 +107,68 @@ export const SessionManager: React.FC = () => {
           <Text style={styles.buttonText}>Start Session</Text>
         </TouchableOpacity>
       ) : (
-        <TouchableOpacity
-          style={[styles.button, { backgroundColor: theme.error }]}
-          onPress={handleEndSession}
-        >
-          <Ionicons name="stop" size={20} color="white" />
-          <Text style={styles.buttonText}>End Session</Text>
-        </TouchableOpacity>
+        <View>
+          {sessionData.isLoading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color={theme.primary} />
+              <Text style={[styles.loadingText, { color: theme.text }]}>Loading puzzle...</Text>
+            </View>
+          ) : (
+            <>
+              {renderDebugInfo()}
+              <TouchableOpacity
+                style={[styles.button, { backgroundColor: theme.error }]}
+                onPress={handleEndSession}
+              >
+                <Ionicons name="stop" size={20} color="white" />
+                <Text style={styles.buttonText}>End Session</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
       )}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    marginVertical: 8,
-  },
   button: {
-    flexDirection: 'row',
     alignItems: 'center',
+    borderRadius: 8,
+    flexDirection: 'row',
     justifyContent: 'center',
     padding: 12,
-    borderRadius: 8,
   },
   buttonText: {
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
+    marginLeft: 8,
+  },
+  container: {
+    borderRadius: 8,
+    borderWidth: 1,
+    marginVertical: 8,
+    padding: 16,
+  },
+  debugInfo: {
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    borderRadius: 4,
+    marginBottom: 12,
+    padding: 8,
+  },
+  debugText: {
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    fontSize: 12,
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    padding: 12,
+  },
+  loadingText: {
+    fontSize: 16,
     marginLeft: 8,
   },
 }); 

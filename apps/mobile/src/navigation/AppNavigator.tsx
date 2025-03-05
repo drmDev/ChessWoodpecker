@@ -3,13 +3,11 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer, Theme } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { MainScreen } from '../screens/MainScreen';
-import { LichessApiTestScreen } from '../screens/LichessApiTestScreen';
 import { useTheme } from '../contexts/ThemeContext';
 
 // Define the tab navigator param list
 type TabParamList = {
   Home: undefined;
-  LichessApiTest: undefined;
 };
 
 const Tab = createBottomTabNavigator<TabParamList>();
@@ -37,14 +35,7 @@ export const AppNavigator: React.FC = () => {
       <Tab.Navigator
         screenOptions={({ route }) => ({
           tabBarIcon: ({ focused, color, size }) => {
-            let iconName: string = '';
-
-            if (route.name === 'Home') {
-              iconName = focused ? 'home' : 'home-outline';
-            } else if (route.name === 'LichessApiTest') {
-              iconName = focused ? 'code-working' : 'code-slash-outline';
-            }
-
+            let iconName = focused ? 'home' : 'home-outline';
             return <Ionicons name={iconName as any} size={size} color={color} />;
           },
           tabBarActiveTintColor: theme.primary,
@@ -70,13 +61,6 @@ export const AppNavigator: React.FC = () => {
           options={{ 
             title: 'Chess Woodpecker',
             headerShown: false,
-          }} 
-        />
-        <Tab.Screen 
-          name="LichessApiTest" 
-          component={LichessApiTestScreen} 
-          options={{ 
-            title: 'Lichess API Test',
           }} 
         />
       </Tab.Navigator>

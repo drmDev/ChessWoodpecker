@@ -318,36 +318,36 @@ const OrientableChessBoard: React.FC<OrientableChessBoardProps> = ({
 };
 
 const styles = StyleSheet.create({
+  boardContainer: {
+    borderColor: '#634a30',
+    borderWidth: 2,
+    overflow: 'hidden',
+  },
   container: {
     alignItems: 'center',
     justifyContent: 'center',
     padding: 8,
   },
-  boardContainer: {
-    borderWidth: 2,
-    borderColor: '#634a30',
-    overflow: 'hidden',
-  },
-  square: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
-  },
-  piece: {
-    // Image sizing is handled inline based on square size
-  },
   coordinateLabel: {
-    position: 'absolute',
-    fontSize: 10,
     color: '#634a30',
+    fontSize: 10,
+    position: 'absolute',
   },
   fileLabel: {
     bottom: 2,
     right: 2,
   },
+  piece: {
+    // Image sizing is handled inline based on square size
+  },
   rankLabel: {
-    top: 2,
     left: 2,
+    top: 2,
+  },
+  square: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
   },
 });
 

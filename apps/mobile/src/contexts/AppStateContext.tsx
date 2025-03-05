@@ -1,85 +1,74 @@
-import React, { createContext, useContext, useReducer, ReactNode } from 'react';
+import React, { createContext, useContext, useReducer } from 'react';
+import { SessionData } from '../components/session/SessionManager';
 
-export interface SessionData {
-  startTime: number;
-  elapsedTime: number;
-  endTime?: number;
-  state: 'idle' | 'active' | 'paused';
-}
+// Define action types
+type AppAction = 
+  | { type: 'START_SESSION'; payload: SessionData }
+  | { type: 'END_SESSION' }
+  | { type: 'UPDATE_SESSION'; payload: Partial<SessionData> }
+  | { type: 'UPDATE_SESSION_TIME_DELTA'; payload: number }
+  | { type: 'TOGGLE_THEME' };
 
+// Define state type
 interface AppState {
   sessionData: SessionData | null;
-  themeMode: 'light' | 'dark';
+  theme: 'light' | 'dark';
 }
 
-// Action types
-type Action =
-  | { type: 'START_SESSION'; payload: any[] }
-  | { type: 'END_SESSION' }
-  | { type: 'TOGGLE_THEME' }
-  | { type: 'UPDATE_SESSION_TIME_DELTA'; payload: number };
+// Create context
+const AppStateContext = createContext<{
+  state: AppState;
+  dispatch: React.Dispatch<AppAction>;
+} | undefined>(undefined);
 
 // Initial state
 const initialState: AppState = {
   sessionData: null,
-  themeMode: 'light',
+  theme: 'light'
 };
 
-// Reducer
-const reducer = (state: AppState, action: Action): AppState => {
+// Reducer function
+function appReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
     case 'START_SESSION':
       return {
         ...state,
-        sessionData: {
-          startTime: Date.now(),
-          elapsedTime: 0,
-          state: 'active'
-        },
+        sessionData: action.payload
       };
     case 'END_SESSION':
       return {
         ...state,
         sessionData: null
       };
+    case 'UPDATE_SESSION':
+      return {
+        ...state,
+        sessionData: state.sessionData ? {
+          ...state.sessionData,
+          ...action.payload
+        } : null
+      };
+    case 'UPDATE_SESSION_TIME_DELTA':
+      return {
+        ...state,
+        sessionData: state.sessionData ? {
+          ...state.sessionData,
+          elapsedTime: state.sessionData.elapsedTime + action.payload
+        } : null
+      };
     case 'TOGGLE_THEME':
       return {
         ...state,
-        themeMode: state.themeMode === 'light' ? 'dark' : 'light',
-      };
-    case 'UPDATE_SESSION_TIME_DELTA':
-      if (!state.sessionData) return state;
-      return {
-        ...state,
-        sessionData: {
-          ...state.sessionData,
-          elapsedTime: (state.sessionData.elapsedTime || 0) + action.payload,
-        },
+        theme: state.theme === 'light' ? 'dark' : 'light'
       };
     default:
       return state;
   }
-};
-
-// Context
-interface AppStateContextType {
-  state: AppState;
-  dispatch: React.Dispatch<Action>;
 }
 
-const AppStateContext = createContext<AppStateContextType | undefined>(
-  undefined
-);
-
-// Provider
-interface AppStateProviderProps {
-  children: ReactNode;
-}
-
-export const AppStateProvider: React.FC<AppStateProviderProps> = ({
-  children,
-}) => {
-  const [state, dispatch] = useReducer(reducer, initialState);
+// Provider component
+export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [state, dispatch] = useReducer(appReducer, initialState);
 
   return (
     <AppStateContext.Provider value={{ state, dispatch }}>
@@ -88,8 +77,8 @@ export const AppStateProvider: React.FC<AppStateProviderProps> = ({
   );
 };
 
-// Hook
-export const useAppState = (): AppStateContextType => {
+// Hook for using the app state
+export const useAppState = () => {
   const context = useContext(AppStateContext);
   if (context === undefined) {
     throw new Error('useAppState must be used within an AppStateProvider');
