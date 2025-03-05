@@ -59,22 +59,20 @@ export const MainScreen: React.FC = () => {
     makeOpponentMove,
     onPuzzleComplete,
     isUserTurn,
-    isGameOver
+    isGameOver,
+    isAutoSolving
   } = usePuzzleGame(handleFetchNewPuzzle);
 
-  // Add effect to automatically make opponent's move when it's not the user's turn
-  useEffect(() => {
-    if (state.sessionData?.currentPuzzle && !isUserTurn && !isGameOver && !isOpponentMoving) {
-      makeOpponentMove();
-    }
-  }, [state.sessionData?.currentPuzzle, isUserTurn, isGameOver, isOpponentMoving, makeOpponentMove]);
-
   const handleDragStart = () => {
-    setIsInteractingWithBoard(true);
+    if (!isAutoSolving && !isOpponentMoving) {
+      setIsInteractingWithBoard(true);
+    }
   };
 
   const handleDragEnd = () => {
-    setIsInteractingWithBoard(false);
+    if (!isAutoSolving && !isOpponentMoving) {
+      setIsInteractingWithBoard(false);
+    }
   };
 
   const handleClearCache = async () => {
@@ -143,13 +141,13 @@ export const MainScreen: React.FC = () => {
           {isSessionActive && state.sessionData?.currentPuzzle && !state.sessionData?.isLoading && (
             <View style={styles.boardContainer}>
               <TurnIndicator isWhiteToMove={state.sessionData.currentPuzzle.isWhiteToMove} />
-              <OrientableChessBoard 
+              <OrientableChessBoard
+                initialFen={currentPosition || undefined}
                 orientation={state.sessionData.currentPuzzle.isWhiteToMove ? 'white' : 'black'}
-                showCoordinates={true}
+                onMove={!isAutoSolving ? handleMove : undefined}
                 onDragStart={handleDragStart}
                 onDragEnd={handleDragEnd}
-                onMove={handleMove}
-                initialFen={currentPosition || state.sessionData.currentPuzzle.fen}
+                showCoordinates={true}
               />
             </View>
           )}
