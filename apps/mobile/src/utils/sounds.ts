@@ -1,5 +1,4 @@
 import { Audio } from 'expo-av';
-import { Platform } from 'react-native';
 import { preloadAssets, getAssetUri } from './assetLoader';
 
 // Define sound types

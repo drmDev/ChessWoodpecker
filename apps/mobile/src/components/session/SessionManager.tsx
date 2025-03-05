@@ -5,7 +5,6 @@ import { useAppState } from '../../contexts/AppStateContext';
 import { timerService } from '../../services/TimerService';
 import { puzzleService } from '../../services/PuzzleService';
 import { Ionicons } from '@expo/vector-icons';
-import { playSound } from '../../utils/sounds';
 import { Puzzle } from '../../models/PuzzleModel';
 
 // Session state type
