@@ -12,13 +12,20 @@ interface PuzzleGameState {
   isOpponentMoving: boolean;
   isUserTurn: boolean;
   isGameOver: boolean;
+  isAutoSolving: boolean;
 }
 
 interface PuzzleGameActions {
   handleMove: (from: string, to: string) => void;
   resetGame: (puzzle: Puzzle) => void;
   makeOpponentMove: () => Promise<void>;
+  autoSolvePuzzle: () => Promise<void>;
 }
+
+// Delay between moves during auto-solve (in milliseconds)
+const AUTO_SOLVE_MOVE_DELAY = 1000;
+const NEXT_PUZZLE_DELAY = 2000;
+const OPPONENT_MOVE_DELAY = 500;
 
 /**
  * Custom hook that manages the puzzle game state and logic
@@ -30,6 +37,7 @@ export function usePuzzleGame(onPuzzleComplete: () => void): PuzzleGameState & P
   const [currentPosition, setCurrentPosition] = useState<string | null>(null);
   const [chessInstance] = useState(() => new Chess());
   const [isOpponentMoving, setIsOpponentMoving] = useState(false);
+  const [isAutoSolving, setIsAutoSolving] = useState(false);
 
   // Reset game state when puzzle changes
   useEffect(() => {
@@ -41,20 +49,69 @@ export function usePuzzleGame(onPuzzleComplete: () => void): PuzzleGameState & P
   const resetGame = useCallback((puzzle: Puzzle) => {
     setCurrentPosition(puzzle.fen);
     setCurrentMoveIndex(0);
-    
-    // Reset the chess instance to clear any highlighted squares
+    setIsOpponentMoving(false);
+    setIsAutoSolving(false);
     chessInstance.load(puzzle.fen);
   }, []);
 
-  const handleMove = useCallback((from: string, to: string) => {
+  const makeMove = useCallback(async (from: string, to: string, promotion?: string) => {
+    const moveResult = chessInstance.move({ from, to, promotion });
+    if (!moveResult) return false;
+
+    // Play appropriate sound based on the move type
+    if (moveResult.captured) {
+      await playSound('capture');
+    } else if (moveResult.flags.includes('k') || moveResult.flags.includes('q')) {
+      await playSound('move');
+    } else if (chessInstance.inCheck()) {
+      await playSound('check');
+    } else {
+      await playSound('move');
+    }
+
+    setCurrentPosition(chessInstance.fen());
+    return true;
+  }, [chessInstance]);
+
+  const autoSolvePuzzle = useCallback(async () => {
     if (!state.sessionData?.currentPuzzle) return;
 
     const puzzle = state.sessionData.currentPuzzle;
+    setIsAutoSolving(true);
+
+    try {
+      // Reset to initial position
+      chessInstance.load(puzzle.fen);
+      setCurrentPosition(puzzle.fen);
+      setCurrentMoveIndex(0);
+
+      // Play through each move with delay
+      for (let i = 0; i < puzzle.solutionMovesUCI.length; i++) {
+        const move = puzzle.solutionMovesUCI[i];
+        await new Promise(resolve => setTimeout(resolve, AUTO_SOLVE_MOVE_DELAY));
+
+        const from = move.substring(0, 2);
+        const to = move.substring(2, 4);
+        const promotion = move.length === 5 ? move[4] : undefined;
+        
+        await makeMove(from, to, promotion);
+        setCurrentMoveIndex(i + 1);
+      }
+
+      await new Promise(resolve => setTimeout(resolve, NEXT_PUZZLE_DELAY));
+    } finally {
+      setIsAutoSolving(false);
+      onPuzzleComplete();
+    }
+  }, [state.sessionData?.currentPuzzle, chessInstance, makeMove, onPuzzleComplete]);
+
+  const handleMove = useCallback(async (from: string, to: string) => {
+    if (!state.sessionData?.currentPuzzle || isAutoSolving || isOpponentMoving) return;
+
+    const puzzle = state.sessionData.currentPuzzle;
     
-    // Load current position
+    // Load current position and replay moves
     chessInstance.load(puzzle.fen);
-    
-    // Play moves up to current index
     for (let i = 0; i < currentMoveIndex; i++) {
       const move = puzzle.solutionMovesUCI[i];
       const from = move.substring(0, 2);
@@ -67,100 +124,50 @@ export function usePuzzleGame(onPuzzleComplete: () => void): PuzzleGameState & P
     const piece = chessInstance.get(from as Square);
     const isPromotion = piece && piece.type === 'p' && 
                         ((piece.color === 'w' && to[1] === '8') || 
-                         (piece.color === 'b' && to[1] === '1')); // Check if it's a promotion move
+                         (piece.color === 'b' && to[1] === '1'));
 
-    const moveToValidate = isPromotion ? `${to}q` : to; // Append 'q' for queen promotion if it's a promotion move
+    const moveToValidate = isPromotion ? `${to}q` : to;
 
     const result = validatePuzzleMove(
       chessInstance,
-      { from, to: moveToValidate }, // Validate with the correct notation
+      { from, to: moveToValidate },
       puzzle.solutionMovesUCI,
       currentMoveIndex
     );
 
     if (result.isValid) {
       // Make the user's move
-      const moveResult = chessInstance.move({ from, to, promotion: isPromotion ? 'q' : undefined }); // Handle promotion
-      
-      // Play appropriate sound based on the move type
-      if (moveResult) {
-        if (moveResult.captured) {
-          playSound('capture');
-        } else if (moveResult.flags.includes('k') || moveResult.flags.includes('q')) {
-          // Castle move
-          playSound('move');
-        } else if (chessInstance.inCheck()) {
-          playSound('check');
-        } else {
-          playSound('move');
-        }
-      }
-      
-      setCurrentPosition(chessInstance.fen());
-      setCurrentMoveIndex(prevIndex => prevIndex + 1);
+      await makeMove(from, to, isPromotion ? 'q' : undefined);
+      const newMoveIndex = currentMoveIndex + 1;
+      setCurrentMoveIndex(newMoveIndex);
       
       if (result.isComplete) {
-        // Puzzle completed! Play success sound
         playSound('success');
         onPuzzleComplete();
-      } else if (result.nextMove) {
-        // Let the useEffect handle the opponent's move
-        // The opponent's move will be made automatically by the makeOpponentMove function
+      } else {
+        // Make opponent's move after a short delay
+        setIsOpponentMoving(true);
+        await new Promise(resolve => setTimeout(resolve, OPPONENT_MOVE_DELAY));
+        
+        // Get the next move using the updated move index
+        const nextMove = puzzle.solutionMovesUCI[newMoveIndex];
+        const oppFrom = nextMove.substring(0, 2);
+        const oppTo = nextMove.substring(2, 4);
+        const oppPromotion = nextMove.length === 5 ? nextMove[4] : undefined;
+        
+        await makeMove(oppFrom, oppTo, oppPromotion);
+        setCurrentMoveIndex(newMoveIndex + 1);
+        setIsOpponentMoving(false);
       }
     } else {
-      // Play failure sound
       playSound('failure');
-      // TODO: Handle incorrect move
+      autoSolvePuzzle();
     }
-  }, [state.sessionData?.currentPuzzle, currentMoveIndex, onPuzzleComplete]);
+  }, [state.sessionData?.currentPuzzle, currentMoveIndex, makeMove, isAutoSolving, isOpponentMoving, autoSolvePuzzle, onPuzzleComplete]);
 
-  const makeOpponentMove = useCallback(async () => {
-    if (!chessInstance || !state.sessionData?.currentPuzzle || currentMoveIndex >= state.sessionData.currentPuzzle.solutionMovesUCI.length) {
-      return;
-    }
-
-    const puzzle = state.sessionData.currentPuzzle;
-    const move = puzzle.solutionMovesUCI[currentMoveIndex];
-    setIsOpponentMoving(true);
-
-    // Remove the delay before the opponent's move
-    try {
-      const moveResult = chessInstance.move(move);
-      
-      // Play appropriate sound based on the move type
-      if (moveResult) {
-        if (moveResult.captured) {
-          await playSound('capture');
-        } else if (moveResult.flags.includes('k') || moveResult.flags.includes('q')) {
-          // Castle move
-          await playSound('move');
-        } else if (chessInstance.inCheck()) {
-          await playSound('check');
-        } else {
-          await playSound('move');
-        }
-      }
-
-      setCurrentPosition(chessInstance.fen());
-      setCurrentMoveIndex(prevIndex => prevIndex + 1);
-    } catch (error) {
-      console.error('Error making opponent move:', error);
-    } finally {
-      setIsOpponentMoving(false);
-    }
-  }, [chessInstance, currentMoveIndex, state.sessionData?.currentPuzzle, playSound]);
-
-  // Compute derived state
   const isUserTurn = useCallback(() => {
     if (!state.sessionData?.currentPuzzle) return false;
-    
-    // In puzzles, the user always makes the first move
-    // This is because puzzles are designed to start with the user's move
-    if (currentMoveIndex === 0) {
-      return true;
-    }
-    
-    // For subsequent moves, alternate turns based on color
+    if (currentMoveIndex === 0) return true;
     return (currentMoveIndex % 2 === 0) === state.sessionData.currentPuzzle.isWhiteToMove;
   }, [currentMoveIndex, state.sessionData?.currentPuzzle]);
 
@@ -176,8 +183,10 @@ export function usePuzzleGame(onPuzzleComplete: () => void): PuzzleGameState & P
     resetGame,
     onPuzzleComplete,
     isOpponentMoving,
-    makeOpponentMove,
+    makeOpponentMove: async () => {}, // Keep for interface compatibility but no longer used
+    autoSolvePuzzle,
     isUserTurn: isUserTurn(),
     isGameOver: isGameOver(),
+    isAutoSolving,
   };
 } 
