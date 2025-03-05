@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Text, ScrollView, SafeAreaView, TouchableOpacity } from 'react-native';
 import { SessionManager } from '../components/session/SessionManager';
 import { useTheme } from '../contexts/ThemeContext';
@@ -36,7 +36,38 @@ export const MainScreen: React.FC = () => {
   const [isDebugCollapsed, setIsDebugCollapsed] = useState(true);
   
   // Use the puzzle game hook
-  const { currentPosition, handleMove } = usePuzzleGame();
+  const handleFetchNewPuzzle = async () => {
+    try {
+      if (!state.sessionData) {
+        console.log('No active session');
+        return;
+      }
+      const puzzle = await puzzleService.fetchRandomPuzzle();
+      dispatch({ type: 'UPDATE_SESSION', payload: { currentPuzzle: puzzle } });
+      console.log('Fetched new puzzle:', puzzle.id);
+    } catch (error) {
+      console.error('Failed to fetch new puzzle:', error);
+    }
+  };
+
+  const { 
+    currentPosition, 
+    currentMoveIndex,
+    handleMove, 
+    resetGame,
+    isOpponentMoving,
+    makeOpponentMove,
+    onPuzzleComplete,
+    isUserTurn,
+    isGameOver
+  } = usePuzzleGame(handleFetchNewPuzzle);
+
+  // Add effect to automatically make opponent's move when it's not the user's turn
+  useEffect(() => {
+    if (state.sessionData?.currentPuzzle && !isUserTurn && !isGameOver && !isOpponentMoving) {
+      makeOpponentMove();
+    }
+  }, [state.sessionData?.currentPuzzle, isUserTurn, isGameOver, isOpponentMoving, makeOpponentMove]);
 
   const handleDragStart = () => {
     setIsInteractingWithBoard(true);
@@ -52,20 +83,6 @@ export const MainScreen: React.FC = () => {
       console.log('Cache cleared successfully');
     } catch (error) {
       console.error('Failed to clear cache:', error);
-    }
-  };
-
-  const handleFetchNewPuzzle = async () => {
-    try {
-      if (!state.sessionData) {
-        console.log('No active session');
-        return;
-      }
-      const puzzle = await puzzleService.fetchRandomPuzzle();
-      dispatch({ type: 'UPDATE_SESSION', payload: { currentPuzzle: puzzle } });
-      console.log('Fetched new puzzle:', puzzle.id);
-    } catch (error) {
-      console.error('Failed to fetch new puzzle:', error);
     }
   };
 
