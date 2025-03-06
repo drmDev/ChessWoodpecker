@@ -6,6 +6,12 @@ import { ChessPiece } from '../ChessPiece';
 import { Gesture } from 'react-native-gesture-handler';
 import { mapCoordinatesToSquare } from '../../../utils/chess/orientation-utils';
 import { playSound } from '../../../utils/sounds';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  runOnJS
+} from 'react-native-reanimated';
 
 // Type for board position
 type BoardPosition = {
@@ -35,15 +41,26 @@ const OrientableChessBoard: React.FC<OrientableChessBoardProps> = ({
   onDragEnd,
   showCoordinates = true,
 }) => {
+  const animX = useSharedValue(0);
+  const animY = useSharedValue(0);
+  const animOpacity = useSharedValue(1);
+
   const [boardSize, setBoardSize] = useState(calculateBoardSize());
   const [position, setPosition] = useState<BoardPosition>({});
-  const [selectedSquare, setSelectedSquare] = useState<string | null>(null);
   const [lastMove, setLastMove] = useState<{ from: string; to: string } | null>(null);
   const [draggedPiece, setDraggedPiece] = useState<{ square: string; piece: string } | null>(null);
-  
+
   const chessRef = useRef<Chess>(new Chess(initialFen));
   const squareSize = boardSize / 8;
   const boardRef = useRef<View>(null);
+
+  const [animatingPiece, setAnimatingPiece] = useState<{
+    piece: string;
+    fromSquare: string;
+    toSquare: string;
+    fromCoords: { x: number, y: number };
+    toCoords: { x: number, y: number };
+  } | null>(null);
 
   // Update board size when window resizes
   useEffect(() => {
@@ -68,7 +85,7 @@ const OrientableChessBoard: React.FC<OrientableChessBoardProps> = ({
     updatePositionFromChess();
   }, [orientation]);
 
-  // Calculate optimal board size
+  // this function calculates the size of the board based on the screen size
   function calculateBoardSize() {
     const { width, height } = Dimensions.get('window');
     const smallerDimension = Math.min(width, height);
@@ -94,10 +111,11 @@ const OrientableChessBoard: React.FC<OrientableChessBoardProps> = ({
   const updatePositionFromChess = () => {
     const chess = chessRef.current;
     const newPosition: BoardPosition = {};
-    
+
     // Get position from chess.js
     const board = chess.board();
-    
+
+    // this loop iterates over the board and adds the pieces to the new position
     for (let rank = 0; rank < 8; rank++) {
       for (let file = 0; file < 8; file++) {
         const piece = board[rank][file];
@@ -110,11 +128,22 @@ const OrientableChessBoard: React.FC<OrientableChessBoardProps> = ({
         }
       }
     }
-    
+
     setPosition(newPosition);
   };
 
-  // Handle piece movement
+  // this function calculates the coordinates of the square based on the orientation
+  const getSquareCoordinates = (square: string) => {
+    const file = square.charCodeAt(0) - 97; // 'a' is 97 in ASCII
+    const rank = parseInt(square[1]) - 1;
+
+    // Adjust for orientation
+    const col = orientation === 'white' ? file : 7 - file;
+    const row = orientation === 'white' ? 7 - rank : rank;
+
+    return { x: col * squareSize, y: row * squareSize };
+  };
+
   const handleMove = (from: string, to: string) => {
     try {
       const chess = chessRef.current;
@@ -129,6 +158,51 @@ const OrientableChessBoard: React.FC<OrientableChessBoardProps> = ({
         return false;
       }
 
+      // Get the piece being moved
+      const piece = position[from];
+      if (!piece) return false;
+
+      // Calculate the source and destination coordinates
+      const fromCoords = getSquareCoordinates(from);
+      const toCoords = getSquareCoordinates(to);
+
+      // Start the animation
+      setAnimatingPiece({
+        piece: `${piece.color}-${piece.type}`,
+        fromSquare: from,
+        toSquare: to,
+        fromCoords,
+        toCoords
+      });
+
+      // Set initial animation position
+      animX.value = fromCoords.x;
+      animY.value = fromCoords.y;
+      animOpacity.value = 1;
+
+      // Animate the piece
+      animX.value = withTiming(toCoords.x, { duration: 300 });
+      animY.value = withTiming(toCoords.y, { duration: 300 }, (finished) => {
+        if (finished) {
+          runOnJS(finalizeMove)(from, to);
+        }
+      });
+
+      // Create a temporary position that hides the source piece during animation
+      const tempPosition = { ...position };
+      tempPosition[from] = null;
+      setPosition(tempPosition);
+
+      return true;
+    } catch (_error) {
+      return false;
+    }
+  };
+
+  const finalizeMove = (from: string, to: string) => {
+    try {
+      const chess = chessRef.current;
+
       const move = chess.move({
         from,
         to,
@@ -136,34 +210,45 @@ const OrientableChessBoard: React.FC<OrientableChessBoardProps> = ({
       });
 
       if (move) {
+        // soundToPlay can only hold one of the three string values: 'move', 'capture', or 'check', and defaults to 'move'
+        let soundToPlay: 'move' | 'capture' | 'check' = 'move';
+        if (move.captured) {
+          soundToPlay = 'capture';
+        } else if (move.san.includes('+')) {
+          soundToPlay = 'check';
+        }
+
+        playSound(soundToPlay);
+
         updatePositionFromChess();
         setLastMove({ from, to });
-
-        // Play appropriate sound based on move type
-        try {
-          // Determine which sound to play
-          let soundToPlay: 'move' | 'capture' | 'check' = 'move';
-          if (move.captured) {
-            soundToPlay = 'capture';
-          } else if (move.san.includes('+')) {
-            soundToPlay = 'check';
-          }
-
-          playSound(soundToPlay);
-        } catch (_soundError) {
-          // Silently handle errors
-        }
+        setAnimatingPiece(null);
 
         if (onMove) {
           onMove(from, to);
         }
-        return true;
       }
-      return false;
     } catch (_error) {
-      return false;
+      // Silently handle errors
     }
   };
+
+
+  // Add the animated style for the moving piece
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      position: 'absolute',
+      width: squareSize,
+      height: squareSize,
+      transform: [
+        { translateX: animX.value },
+        { translateY: animY.value }
+      ],
+      opacity: animOpacity.value,
+      zIndex: 10,
+    };
+  });
+
 
   // JS functions to be called from the worklet context
   const jsSetDraggedPiece = (square: string, piece: string) => {
@@ -187,13 +272,13 @@ const OrientableChessBoard: React.FC<OrientableChessBoardProps> = ({
   // Get board position for coordinate calculation
   const getBoardPosition = () => {
     if (!boardRef.current) return { x: 0, y: 0 };
-    
+
     // Measure the board's position on screen
     let position = { x: 0, y: 0 };
     boardRef.current.measure((x, y, width, height, pageX, pageY) => {
       position = { x: pageX, y: pageY };
     });
-    
+
     return position;
   };
 
@@ -208,13 +293,12 @@ const OrientableChessBoard: React.FC<OrientableChessBoardProps> = ({
       })
       .onFinalize((event) => {
         if (draggedPiece) {
-          // Get board position
           const boardPosition = getBoardPosition();
-          
+
           // Calculate board-relative coordinates
           const relativeX = event.absoluteX - boardPosition.x;
           const relativeY = event.absoluteY - boardPosition.y;
-          
+
           // Calculate the target square from the relative position
           const toSquare = mapCoordinatesToSquare(
             { x: relativeX, y: relativeY },
@@ -235,38 +319,37 @@ const OrientableChessBoard: React.FC<OrientableChessBoardProps> = ({
       });
   };
 
-  // Render a square on the board
   const renderSquare = (row: number, col: number) => {
     const isBlack = (row + col) % 2 === 1;
     const squareColor = isBlack ? '#769656' : '#eeeed2';
-    
+
     // Map visual position to algebraic notation based on orientation
     const file = orientation === 'white' ? col : 7 - col;
     const rank = orientation === 'white' ? 7 - row : row;
     const square = String.fromCharCode(97 + file) + (rank + 1);
-    
+
     // Determine if this square is part of the last move
     const isLastMoveFrom = lastMove && square === lastMove.from;
     const isLastMoveTo = lastMove && square === lastMove.to;
-    
+
     // Get the piece on this square, if any
     const piece = position[square];
-    
+
     // Determine background color with highlights
     let backgroundColor = squareColor;
     if (isLastMoveFrom || isLastMoveTo) {
       backgroundColor = '#f7f769'; // Highlight last move
     }
-    
+
     return (
       <View
         key={`${row}-${col}`}
         style={[
           styles.square,
-          { 
-            width: squareSize, 
-            height: squareSize, 
-            backgroundColor 
+          {
+            width: squareSize,
+            height: squareSize,
+            backgroundColor
           }
         ]}
       >
@@ -277,7 +360,7 @@ const OrientableChessBoard: React.FC<OrientableChessBoardProps> = ({
             gesture={createPieceGesture(square, `${piece.color}-${piece.type}`)}
           />
         )}
-        
+
         {/* Render coordinates if needed */}
         {showCoordinates && (
           <>
@@ -306,13 +389,28 @@ const OrientableChessBoard: React.FC<OrientableChessBoardProps> = ({
     );
   };
 
+  const renderAnimatingPiece = () => {
+    if (!animatingPiece) return null;
+
+    return (
+      <Animated.View style={animatedStyle}>
+        <ChessPiece
+          piece={animatingPiece.piece}
+          square={animatingPiece.toSquare}
+          gesture={Gesture.Pan().enabled(false)}
+        />
+      </Animated.View>
+    );
+  };
+
   return (
     <GestureHandlerRootView style={styles.container}>
-      <View 
+      <View
         ref={boardRef}
-        style={[styles.boardContainer, { width: boardSize, height: boardSize }]} 
+        style={[styles.boardContainer, { width: boardSize, height: boardSize }]}
       >
         {[0, 1, 2, 3, 4, 5, 6, 7].map(row => renderRow(row))}
+        {renderAnimatingPiece()}
       </View>
     </GestureHandlerRootView>
   );
