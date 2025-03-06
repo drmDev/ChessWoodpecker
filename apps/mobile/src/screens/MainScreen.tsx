@@ -84,6 +84,15 @@ export const MainScreen: React.FC = () => {
     }
   };
 
+  const handleShowCacheIds = async () => {
+    try {
+      const ids = await PuzzleCacheService.getCachedPuzzleIds();
+      console.log('Cached Puzzle IDs:', ids.join(', '));
+    } catch (error) {
+      console.error('Failed to get cache IDs:', error);
+    }
+  };
+
   const renderDebugTools = () => {
     if (!isDev) return null;
 
@@ -117,6 +126,12 @@ export const MainScreen: React.FC = () => {
               onPress={handleFetchNewPuzzle}
             >
               <Text style={styles.debugButtonText}>Fetch New Puzzle</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.debugButton, { backgroundColor: theme.primary }]}
+              onPress={handleShowCacheIds}
+            >
+              <Text style={styles.debugButtonText}>Show Cache IDs</Text>
             </TouchableOpacity>
             <TouchableOpacity 
               style={[styles.debugButton, { backgroundColor: theme.error }]}

@@ -87,6 +87,21 @@ export class PuzzleCacheService {
       console.error('[PuzzleCacheService] Error inspecting cache:', _error);
     }
   }
+
+  /**
+   * Get all cached puzzle IDs
+   */
+  static async getCachedPuzzleIds(): Promise<string[]> {
+    try {
+      const keys = await AsyncStorage.getAllKeys();
+      return keys
+        .filter(key => key.startsWith(PUZZLE_CACHE_PREFIX))
+        .map(key => key.replace(PUZZLE_CACHE_PREFIX, ''));
+    } catch (error) {
+      console.error('[PuzzleCacheService] Error getting cached puzzle IDs:', error);
+      return [];
+    }
+  }
 }
 
 // Expose debug functions to global scope
