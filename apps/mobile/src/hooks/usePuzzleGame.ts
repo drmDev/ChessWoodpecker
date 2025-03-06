@@ -61,8 +61,6 @@ export function usePuzzleGame(onPuzzleComplete: () => void): PuzzleGameState & P
     // Play appropriate sound based on the move type
     if (moveResult.captured) {
       await playSound('capture');
-    } else if (moveResult.flags.includes('k') || moveResult.flags.includes('q')) {
-      await playSound('move');
     } else if (chessInstance.inCheck()) {
       await playSound('check');
     } else {
