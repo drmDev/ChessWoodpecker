@@ -23,6 +23,23 @@ describe('PuzzleModel', () => {
       expect(convertUciToSan(chess, 'g1f3')).toBe('Nf3');
     });
 
+    it('should convert promotion move', () => {
+      // Set up a position where promotion is possible
+      const fen = '8/4P3/8/8/8/k7/8/K7 w - - 0 1';
+      chess.load(fen);
+      
+      // Verify the position is valid
+      expect(chess.fen()).toBe(fen);
+      expect(chess.get('e7')).toEqual({ type: 'p', color: 'w' });
+      expect(chess.moves({ square: 'e7' })).toContain('e8=Q');
+
+      // Test all promotion variants
+      expect(convertUciToSan(chess, 'e7e8q')).toBe('e8=Q');
+      expect(convertUciToSan(chess, 'e7e8r')).toBe('e8=R');
+      expect(convertUciToSan(chess, 'e7e8b')).toBe('e8=B');
+      expect(convertUciToSan(chess, 'e7e8n')).toBe('e8=N');
+    });
+
     it('should return null for invalid move', () => {
       expect(convertUciToSan(chess, 'e2e5')).toBe(null);
     });

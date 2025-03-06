@@ -6,6 +6,7 @@ import { timerService } from '../../services/TimerService';
 import { puzzleService } from '../../services/PuzzleService';
 import { Ionicons } from '@expo/vector-icons';
 import { Puzzle } from '../../models/PuzzleModel';
+import { playSound, SoundTypes } from '../../utils/sounds';
 
 // Session state type
 export type SessionState = 'idle' | 'active' | 'paused';
@@ -56,12 +57,14 @@ export const SessionManager: React.FC = () => {
           isLoading: false
         }
       });
+      await playSound(SoundTypes.START_SESSION);
     } catch (error) {
       console.error('Failed to start session:', error);
     }
   };
   
-  const handleEndSession = () => {
+  const handleEndSession = async () => {
+    await playSound(SoundTypes.END_SESSION);
     dispatch({ type: 'END_SESSION' });
   };
 

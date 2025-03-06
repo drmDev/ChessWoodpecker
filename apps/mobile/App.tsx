@@ -25,11 +25,8 @@ try {
   console.warn('Failed to configure Reanimated logger:', error);
 }
 
-// The style={{ flex: 1 }} property on the GestureHandlerRootView component is using a fundamental concept from React Native's layout system called Flexbox.
-// Flexbox is a layout system that allows you to design complex layouts with ease.
-// It provides a way to distribute space among items in a container and align them in various ways.
-// The flex: 1 property makes the GestureHandlerRootView component take up the full available space in the parent container.
-// This is important for ensuring that the component takes up the entire screen and that its children components are properly positioned. 
+// The App component is the main component of the application.
+// It is used to wrap the root component of the application and ensure that all gestures and events are properly handled.
 export default function App() {
   // Load sounds when the app starts
   useEffect(() => {

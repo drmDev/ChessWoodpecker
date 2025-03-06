@@ -1,16 +1,28 @@
 import { Audio } from 'expo-av';
 import { preloadAssets, getAssetUri } from './assetLoader';
 
-// Define sound types
-export type SoundName = 'move' | 'capture' | 'check' | 'success' | 'failure';
+// Define sound types using a const object for better type safety
+export const SoundTypes = {
+  MOVE: 'move',
+  CAPTURE: 'capture',
+  CHECK: 'check',
+  SUCCESS: 'success',
+  FAILURE: 'failure',
+  START_SESSION: 'startSession',
+  END_SESSION: 'endSession'
+} as const;
+
+export type SoundName = typeof SoundTypes[keyof typeof SoundTypes];
 
 // Map of sound names to their require statements
 const soundModules: Record<SoundName, number> = {
-  move: require('../../assets/sounds/Move.mp3'),
-  capture: require('../../assets/sounds/Capture.mp3'),
-  check: require('../../assets/sounds/Check.mp3'),
-  success: require('../../assets/sounds/Success.mp3'),
-  failure: require('../../assets/sounds/Failure.mp3')
+  [SoundTypes.MOVE]: require('../../assets/sounds/Move.mp3'),
+  [SoundTypes.CAPTURE]: require('../../assets/sounds/Capture.mp3'),
+  [SoundTypes.CHECK]: require('../../assets/sounds/Check.mp3'),
+  [SoundTypes.SUCCESS]: require('../../assets/sounds/Success.mp3'),
+  [SoundTypes.FAILURE]: require('../../assets/sounds/Failure.mp3'),
+  [SoundTypes.START_SESSION]: require('../../assets/sounds/START_zapsplat_retro_coin.mp3'),
+  [SoundTypes.END_SESSION]: require('../../assets/sounds/END_zapsplat_coin_collect.mp3')
 };
 
 // Cache for loaded sounds
@@ -18,6 +30,19 @@ const loadedSounds: Partial<Record<SoundName, Audio.Sound>> = {};
 
 // Track initialization state
 let isInitialized = false;
+let globalVolume = 1.0;
+
+/**
+ * Sets the global volume for all sounds
+ * @param volume Volume level between 0 and 1
+ */
+export function setGlobalVolume(volume: number): void {
+  globalVolume = Math.max(0, Math.min(1, volume));
+  // Update volume for all loaded sounds
+  Object.values(loadedSounds).forEach(sound => {
+    sound?.setVolumeAsync(globalVolume);
+  });
+}
 
 /**
  * Initializes the audio system
@@ -85,7 +110,7 @@ export const playSound = async (name: SoundName): Promise<void> => {
       // Get the asset URI
       const uri = await getAssetUri(soundModules[name]);
       if (!uri) return;
-      
+
       // Create a fresh sound object
       const { sound: newSound } = await Audio.Sound.createAsync(
         { uri },
@@ -97,7 +122,7 @@ export const playSound = async (name: SoundName): Promise<void> => {
 
     // Get current status
     const status = await sound.getStatusAsync();
-    
+
     // If sound is already playing, stop it
     if (status.isLoaded && status.isPlaying) {
       await sound.stopAsync();
@@ -105,27 +130,22 @@ export const playSound = async (name: SoundName): Promise<void> => {
 
     // Reset position and play
     await sound.setPositionAsync(0);
-    await sound.setVolumeAsync(1.0);
-    
-    // Play the sound and wait for it to finish
-    await new Promise<void>((resolve) => {
-      sound!.playAsync()
-        .then(() => {
-          // Wait for the sound duration plus a small buffer
-          setTimeout(async () => {
-            try {
-              // Only unload if it's a one-off sound like success/failure
-              if (name === 'success' || name === 'failure') {
-                await sound!.unloadAsync();
-                delete loadedSounds[name];
-              }
-            } finally {
-              resolve();
-            }
-          }, 500); // Increased buffer time to ensure sound completes
-        })
-        .catch(() => resolve()); // Resolve on error to prevent hanging
-    });
+    await sound.setVolumeAsync(globalVolume);
+
+    // Play the sound
+    await sound.playAsync();
+
+    // For one-off sounds, unload them after playing
+    if (name === SoundTypes.SUCCESS || name === SoundTypes.FAILURE) {
+      setTimeout(async () => {
+        try {
+          await sound!.unloadAsync();
+          delete loadedSounds[name];
+        } catch (_err) {
+          // Silently handle errors
+        }
+      }, 500);
+    }
   } catch (_error) {
     // Silently handle errors
   }

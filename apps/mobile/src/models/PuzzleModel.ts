@@ -1,4 +1,5 @@
 import { Chess } from 'chess.js';
+import { extractMoveComponents } from '../utils/chess/PuzzleLogic';
 
 /**
  * Represents the response structure from the Lichess Puzzle API
@@ -96,32 +97,29 @@ export function convertUciToSan(chess: Chess, uciMove: string): string | null {
       return null;
     }
 
-    const from = uciMove.substring(0, 2);
-    const to = uciMove.substring(2, 4);
-    let promotion = undefined;
-
-    if (uciMove.length === 5) {
-      promotion = uciMove[4].toLowerCase();
-      if (!['q', 'r', 'b', 'n'].includes(promotion)) {
-        return null;
-      }
+    let moveComponents;
+    try {
+      moveComponents = extractMoveComponents(uciMove);
+      console.log('Move components:', moveComponents);
+    } catch (error) {
+      console.error('Failed to extract move components:', error);
+      return null;
     }
 
     // Create a clone of the chess instance to avoid modifying the original
     const tempChess = new Chess(chess.fen());
+    console.log('Position:', tempChess.fen());
     
     // Try to make the move
-    const move = tempChess.move({
-      from,
-      to,
-      promotion
-    });
+    const move = tempChess.move(moveComponents);
+    console.log('Move result:', move);
     
     if (move) {
       return move.san;
     }
     return null;
   } catch (error) {
+    console.error('Error in convertUciToSan:', error);
     return null;
   }
 }
