@@ -1,9 +1,10 @@
 import { useState, useCallback, useEffect } from 'react';
-import { Chess, Square } from 'chess.js';
+import { Chess } from 'chess.js';
 import { validatePuzzleMove } from '../utils/chess/PuzzleMoveValidator';
 import { playSound } from '../utils/sounds';
 import { useAppState } from '../contexts/AppStateContext';
 import { Puzzle } from '../models/PuzzleModel';
+import { extractMoveComponents, isPromotionMove, replayMoves, getMoveType } from '../utils/chess/PuzzleLogic';
 
 interface PuzzleGameState {
   currentPosition: string | null;
@@ -59,13 +60,8 @@ export function usePuzzleGame(onPuzzleComplete: () => void): PuzzleGameState & P
     if (!moveResult) return false;
 
     // Play appropriate sound based on the move type
-    if (moveResult.captured) {
-      await playSound('capture');
-    } else if (chessInstance.inCheck()) {
-      await playSound('check');
-    } else {
-      await playSound('move');
-    }
+    const moveType = getMoveType(chessInstance, moveResult);
+    await playSound(moveType);
 
     setCurrentPosition(chessInstance.fen());
     return true;
@@ -85,13 +81,8 @@ export function usePuzzleGame(onPuzzleComplete: () => void): PuzzleGameState & P
 
       // Play through each move with delay
       for (let i = 0; i < puzzle.solutionMovesUCI.length; i++) {
-        const move = puzzle.solutionMovesUCI[i];
         await new Promise(resolve => setTimeout(resolve, AUTO_SOLVE_MOVE_DELAY));
-
-        const from = move.substring(0, 2);
-        const to = move.substring(2, 4);
-        const promotion = move.length === 5 ? move[4] : undefined;
-        
+        const { from, to, promotion } = extractMoveComponents(puzzle.solutionMovesUCI[i]);
         await makeMove(from, to, promotion);
         setCurrentMoveIndex(i + 1);
       }
@@ -109,22 +100,14 @@ export function usePuzzleGame(onPuzzleComplete: () => void): PuzzleGameState & P
     const puzzle = state.sessionData.currentPuzzle;
     
     // Load current position and replay moves
-    chessInstance.load(puzzle.fen);
-    for (let i = 0; i < currentMoveIndex; i++) {
-      const move = puzzle.solutionMovesUCI[i];
-      const from = move.substring(0, 2);
-      const to = move.substring(2, 4);
-      const promotion = move.length === 5 ? move[4] : undefined;
-      chessInstance.move({ from, to, promotion });
+    if (!replayMoves(chessInstance, puzzle.fen, puzzle.solutionMovesUCI.slice(0, currentMoveIndex))) {
+      console.error('Failed to replay moves');
+      return;
     }
 
     // Validate the move
-    const piece = chessInstance.get(from as Square);
-    const isPromotion = piece && piece.type === 'p' && 
-                        ((piece.color === 'w' && to[1] === '8') || 
-                         (piece.color === 'b' && to[1] === '1'));
-
-    const moveToValidate = isPromotion ? `${to}q` : to;
+    const shouldPromote = isPromotionMove(chessInstance, from, to);
+    const moveToValidate = shouldPromote ? `${to}q` : to;
 
     const result = validatePuzzleMove(
       chessInstance,
@@ -135,7 +118,7 @@ export function usePuzzleGame(onPuzzleComplete: () => void): PuzzleGameState & P
 
     if (result.isValid) {
       // Make the user's move
-      await makeMove(from, to, isPromotion ? 'q' : undefined);
+      await makeMove(from, to, shouldPromote ? 'q' : undefined);
       const newMoveIndex = currentMoveIndex + 1;
       setCurrentMoveIndex(newMoveIndex);
       
@@ -148,11 +131,7 @@ export function usePuzzleGame(onPuzzleComplete: () => void): PuzzleGameState & P
         await new Promise(resolve => setTimeout(resolve, OPPONENT_MOVE_DELAY));
         
         // Get the next move using the updated move index
-        const nextMove = puzzle.solutionMovesUCI[newMoveIndex];
-        const oppFrom = nextMove.substring(0, 2);
-        const oppTo = nextMove.substring(2, 4);
-        const oppPromotion = nextMove.length === 5 ? nextMove[4] : undefined;
-        
+        const { from: oppFrom, to: oppTo, promotion: oppPromotion } = extractMoveComponents(puzzle.solutionMovesUCI[newMoveIndex]);
         await makeMove(oppFrom, oppTo, oppPromotion);
         setCurrentMoveIndex(newMoveIndex + 1);
         setIsOpponentMoving(false);

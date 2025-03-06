@@ -1,25 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { StyleSheet, View, Text, Dimensions } from 'react-native';
-import { Chess } from 'chess.js';
+import React, { useRef, useEffect } from 'react';
+import { StyleSheet, View, Text } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ChessPiece } from '../ChessPiece';
 import { Gesture } from 'react-native-gesture-handler';
-import { mapCoordinatesToSquare } from '../../../utils/chess/orientation-utils';
-import { playSound } from '../../../utils/sounds';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  runOnJS
-} from 'react-native-reanimated';
-
-// Type for board position
-type BoardPosition = {
-  [square: string]: {
-    type: 'p' | 'n' | 'b' | 'r' | 'q' | 'k';
-    color: 'w' | 'b';
-  } | null;
-};
+import Animated from 'react-native-reanimated';
+import { useChessBoard } from '../../../hooks/useChessBoard';
 
 interface OrientableChessBoardProps {
   initialFen?: string;
@@ -41,283 +26,37 @@ const OrientableChessBoard: React.FC<OrientableChessBoardProps> = ({
   onDragEnd,
   showCoordinates = true,
 }) => {
-  const animX = useSharedValue(0);
-  const animY = useSharedValue(0);
-  const animOpacity = useSharedValue(1);
-
-  const [boardSize, setBoardSize] = useState(calculateBoardSize());
-  const [position, setPosition] = useState<BoardPosition>({});
-  const [lastMove, setLastMove] = useState<{ from: string; to: string } | null>(null);
-  const [draggedPiece, setDraggedPiece] = useState<{ square: string; piece: string } | null>(null);
-
-  const chessRef = useRef<Chess>(new Chess(initialFen));
-  const squareSize = boardSize / 8;
   const boardRef = useRef<View>(null);
 
-  const [animatingPiece, setAnimatingPiece] = useState<{
-    piece: string;
-    fromSquare: string;
-    toSquare: string;
-    fromCoords: { x: number, y: number };
-    toCoords: { x: number, y: number };
-  } | null>(null);
-
-  // Update board size when window resizes
-  useEffect(() => {
-    const updateBoardSize = () => {
-      const { width, height } = Dimensions.get('window');
-      // Make the board fill 100% of the width, with appropriate height
-      // Use the full width of the screen, minus any padding
-      const size = Math.min(width, height * 0.8);
-      setBoardSize(size);
-    };
-
-    updateBoardSize();
-    const subscription = Dimensions.addEventListener('change', updateBoardSize);
-
-    return () => {
-      subscription.remove();
-    };
-  }, []);
-
-  // Update position when orientation changes
-  useEffect(() => {
-    updatePositionFromChess();
-  }, [orientation]);
-
-  // this function calculates the size of the board based on the screen size
-  function calculateBoardSize() {
-    const { width, height } = Dimensions.get('window');
-    const smallerDimension = Math.min(width, height);
-    return Math.floor(smallerDimension * 0.85);
-  }
-
-  // Initialize or update the board position from FEN
-  React.useEffect(() => {
-    try {
-      const chess = chessRef.current;
-      if (initialFen) {
-        chess.load(initialFen);
-        // Clear the last move highlight when a new position is loaded
-        setLastMove(null);
-      }
-      updatePositionFromChess();
-    } catch (_error) {
-      // Silently handle errors
-    }
-  }, [initialFen]);
-
-  // Update the position state from the chess instance
-  const updatePositionFromChess = () => {
-    const chess = chessRef.current;
-    const newPosition: BoardPosition = {};
-
-    // Get position from chess.js
-    const board = chess.board();
-
-    // this loop iterates over the board and adds the pieces to the new position
-    for (let rank = 0; rank < 8; rank++) {
-      for (let file = 0; file < 8; file++) {
-        const piece = board[rank][file];
-        if (piece) {
-          const square = String.fromCharCode(97 + file) + (8 - rank);
-          newPosition[square] = {
-            type: piece.type as any,
-            color: piece.color
-          };
-        }
-      }
-    }
-
-    setPosition(newPosition);
-  };
-
-  // this function calculates the coordinates of the square based on the orientation
-  const getSquareCoordinates = (square: string) => {
-    const file = square.charCodeAt(0) - 97; // 'a' is 97 in ASCII
-    const rank = parseInt(square[1]) - 1;
-
-    // Adjust for orientation
-    const col = orientation === 'white' ? file : 7 - file;
-    const row = orientation === 'white' ? 7 - rank : rank;
-
-    return { x: col * squareSize, y: row * squareSize };
-  };
-
-  const handleMove = (from: string, to: string) => {
-    try {
-      const chess = chessRef.current;
-
-      // Check if this would be a valid move before attempting it
-      const moves = chess.moves({ verbose: true });
-      const isValidMove = moves.some(
-        move => move.from === from && move.to === to
-      );
-
-      if (!isValidMove) {
-        return false;
-      }
-
-      // Get the piece being moved
-      const piece = position[from];
-      if (!piece) return false;
-
-      // Calculate the source and destination coordinates
-      const fromCoords = getSquareCoordinates(from);
-      const toCoords = getSquareCoordinates(to);
-
-      // Start the animation
-      setAnimatingPiece({
-        piece: `${piece.color}-${piece.type}`,
-        fromSquare: from,
-        toSquare: to,
-        fromCoords,
-        toCoords
-      });
-
-      // Set initial animation position
-      animX.value = fromCoords.x;
-      animY.value = fromCoords.y;
-      animOpacity.value = 1;
-
-      // Animate the piece
-      animX.value = withTiming(toCoords.x, { duration: 300 });
-      animY.value = withTiming(toCoords.y, { duration: 300 }, (finished) => {
-        if (finished) {
-          runOnJS(finalizeMove)(from, to);
-        }
-      });
-
-      // Create a temporary position that hides the source piece during animation
-      const tempPosition = { ...position };
-      tempPosition[from] = null;
-      setPosition(tempPosition);
-
-      return true;
-    } catch (_error) {
-      return false;
-    }
-  };
-
-  const finalizeMove = (from: string, to: string) => {
-    try {
-      const chess = chessRef.current;
-
-      const move = chess.move({
-        from,
-        to,
-        promotion: 'q' // Always promote to queen for simplicity
-      });
-
-      if (move) {
-        // soundToPlay can only hold one of the three string values: 'move', 'capture', or 'check', and defaults to 'move'
-        let soundToPlay: 'move' | 'capture' | 'check' = 'move';
-        if (move.captured) {
-          soundToPlay = 'capture';
-        } else if (move.san.includes('+')) {
-          soundToPlay = 'check';
-        }
-
-        playSound(soundToPlay);
-
-        updatePositionFromChess();
-        setLastMove({ from, to });
-        setAnimatingPiece(null);
-
-        if (onMove) {
-          onMove(from, to);
-        }
-      }
-    } catch (_error) {
-      // Silently handle errors
-    }
-  };
-
-
-  // Add the animated style for the moving piece
-  const animatedStyle = useAnimatedStyle(() => {
-    return {
-      position: 'absolute',
-      width: squareSize,
-      height: squareSize,
-      transform: [
-        { translateX: animX.value },
-        { translateY: animY.value }
-      ],
-      opacity: animOpacity.value,
-      zIndex: 10,
-    };
+  const {
+    boardSize,
+    squareSize,
+    position,
+    lastMove,
+    draggedPiece,
+    animatingPiece,
+    animatedStyle,
+    handleMove,
+    createPieceGesture,
+    getSquareCoordinates,
+    updateBoardPosition, // ← This is the new function we'll add to the hook
+  } = useChessBoard({
+    initialFen,
+    orientation,
+    onMove,
+    onDragStart,
+    onDragEnd,
   });
 
-
-  // JS functions to be called from the worklet context
-  const jsSetDraggedPiece = (square: string, piece: string) => {
-    setDraggedPiece({ square, piece });
-    if (onDragStart) {
-      onDragStart();
-    }
-  };
-
-  const jsHandleMove = (fromSquare: string, toSquare: string) => {
-    return handleMove(fromSquare, toSquare);
-  };
-
-  const jsResetDraggedPiece = () => {
-    setDraggedPiece(null);
-    if (onDragEnd) {
-      onDragEnd();
-    }
-  };
-
-  // Get board position for coordinate calculation
-  const getBoardPosition = () => {
-    if (!boardRef.current) return { x: 0, y: 0 };
-
-    // Measure the board's position on screen
-    let position = { x: 0, y: 0 };
-    boardRef.current.measure((x, y, width, height, pageX, pageY) => {
-      position = { x: pageX, y: pageY };
-    });
-
-    return position;
-  };
-
-  const createPieceGesture = (square: string, piece: string) => {
-    return Gesture.Pan()
-      .runOnJS(true)  // Run all callbacks on JS thread
-      .onBegin(() => {
-        jsSetDraggedPiece(square, piece);
-      })
-      .onUpdate((event) => {
-        // No-op, just track the gesture
-      })
-      .onFinalize((event) => {
-        if (draggedPiece) {
-          const boardPosition = getBoardPosition();
-
-          // Calculate board-relative coordinates
-          const relativeX = event.absoluteX - boardPosition.x;
-          const relativeY = event.absoluteY - boardPosition.y;
-
-          // Calculate the target square from the relative position
-          const toSquare = mapCoordinatesToSquare(
-            { x: relativeX, y: relativeY },
-            orientation,
-            squareSize
-          );
-
-          // Only attempt a move if we have a valid target square
-          if (toSquare && toSquare !== draggedPiece.square) {
-            jsHandleMove(draggedPiece.square, toSquare);
-            jsResetDraggedPiece();
-          } else {
-            jsResetDraggedPiece();
-          }
-        } else {
-          jsResetDraggedPiece();
-        }
+  // This effect updates the board position in the hook whenever the board size changes
+  useEffect(() => {
+    if (boardRef.current) {
+      boardRef.current.measure((x, y, width, height, pageX, pageY) => {
+        // Call the hook's function to update board position
+        updateBoardPosition({ x: pageX, y: pageY });
       });
-  };
+    }
+  }, [boardSize, updateBoardPosition]);
 
   const renderSquare = (row: number, col: number) => {
     const isBlack = (row + col) % 2 === 1;

@@ -1,4 +1,4 @@
-import { LichessPuzzleResponse, processPuzzleData, Puzzle, getPuzzlePosition, convertUciToSan } from '../models/PuzzleModel';
+import { Puzzle, getPuzzlePosition, convertUciToSan } from '../models/PuzzleModel';
 import { PuzzleCacheService } from './PuzzleCacheService';
 import { Chess } from 'chess.js';
 
@@ -31,12 +31,9 @@ class PuzzleService {
       const randomIndex = Math.floor(Math.random() * allPuzzleIds.length);
       const randomId = allPuzzleIds[randomIndex];
 
-      console.log(`[PuzzleService] Fetching puzzle ${randomId}`);
-
       // Check cache first
       const cachedPuzzle = await PuzzleCacheService.getPuzzle(randomId);
       if (cachedPuzzle) {
-        console.log(`[PuzzleService] Cache HIT for puzzle ${randomId}`);
         return cachedPuzzle;
       }
       

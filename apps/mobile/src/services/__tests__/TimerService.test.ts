@@ -1,4 +1,4 @@
-import { TimerService } from '../services/TimerService';
+import { TimerService } from '../TimerService';
 
 // Mock the dispatch function
 const mockDispatch = jest.fn();

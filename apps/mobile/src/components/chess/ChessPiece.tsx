@@ -1,11 +1,8 @@
 import React from 'react';
 import { StyleSheet, Image } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
+import { useChessPiece } from '../../hooks/useChessPiece';
 
 // Chess piece image mapping
 const PIECE_IMAGES: Record<string, any> = {
@@ -29,39 +26,14 @@ export interface ChessPieceProps {
   gesture: ReturnType<typeof Gesture.Pan>;
 }
 
+/**
+ * Renders a chess piece with drag and animation capabilities
+ */
 export const ChessPiece: React.FC<ChessPieceProps> = ({
   piece,
   gesture,
 }) => {
-  const translateX = useSharedValue(0);
-  const translateY = useSharedValue(0);
-  const scale = useSharedValue(1);
-
-  // Compose the gesture with visual feedback
-  const pieceGesture = Gesture.Simultaneous(
-    gesture,
-    Gesture.Pan()
-      .onChange((event) => {
-        translateX.value = event.translationX;
-        translateY.value = event.translationY;
-      })
-      .onBegin(() => {
-        scale.value = withSpring(1.1);
-      })
-      .onFinalize(() => {
-        translateX.value = withSpring(0);
-        translateY.value = withSpring(0);
-        scale.value = withSpring(1);
-      })
-  );
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: translateX.value },
-      { translateY: translateY.value },
-      { scale: scale.value },
-    ],
-  }));
+  const { animatedStyle, pieceGesture } = useChessPiece({ baseGesture: gesture });
 
   if (!piece) return null;
 
