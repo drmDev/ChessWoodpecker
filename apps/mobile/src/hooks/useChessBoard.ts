@@ -2,7 +2,7 @@ import { useRef, useCallback, useState, useEffect } from 'react';
 import { Chess, Square } from 'chess.js';
 import { Dimensions } from 'react-native';
 import { Gesture } from 'react-native-gesture-handler';
-import { useSharedValue, withTiming, runOnJS, useAnimatedStyle } from 'react-native-reanimated';
+import { useSharedValue, withTiming, runOnJS, useAnimatedStyle, Easing, withSpring } from 'react-native-reanimated';
 import { mapCoordinatesToSquare } from '../utils/chess/orientation-utils';
 import { playSound } from '../utils/sounds';
 
@@ -40,8 +40,23 @@ interface UseChessBoardResult {
   handleMove: (from: string, to: string) => boolean;
   createPieceGesture: (square: string, piece: string) => ReturnType<typeof Gesture.Pan>;
   getSquareCoordinates: (square: string) => { x: number; y: number };
-  updateBoardPosition: (position: { x: number; y: number }) => void; // New function
+  updateBoardPosition: (position: { x: number; y: number }) => void;
 }
+
+// Animation configurations for smoother movements
+const ANIMATION_CONFIG = {
+  duration: 250,
+  easing: Easing.bezier(0.25, 0.1, 0.25, 1), // Cubic bezier for natural movement
+};
+
+const SPRING_CONFIG = {
+  damping: 15,
+  stiffness: 150,
+  mass: 0.6,
+  overshootClamping: false,
+  restDisplacementThreshold: 0.01,
+  restSpeedThreshold: 0.01
+};
 
 /**
  * Hook to manage chess board state and interactions
@@ -70,6 +85,8 @@ export function useChessBoard({
   const animX = useSharedValue(0);
   const animY = useSharedValue(0);
   const animOpacity = useSharedValue(1);
+  const animScale = useSharedValue(1);
+  const animElevation = useSharedValue(1);
 
   // Function to update board position - this is the new function
   const updateBoardPosition = useCallback((position: { x: number; y: number }) => {
@@ -121,10 +138,16 @@ export function useChessBoard({
       height: squareSize,
       transform: [
         { translateX: animX.value },
-        { translateY: animY.value }
+        { translateY: animY.value },
+        { scale: animScale.value }
       ],
       opacity: animOpacity.value,
       zIndex: 10,
+      elevation: animElevation.value,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: animElevation.value / 2 },
+      shadowOpacity: 0.3,
+      shadowRadius: animElevation.value,
     };
   }, [squareSize]);
 
@@ -182,7 +205,11 @@ export function useChessBoard({
         playSound(soundToPlay);
         updatePositionFromChess();
         setLastMove({ from, to });
-        setAnimatingPiece(null);
+        
+        // Fade out the animated piece before removing it
+        animOpacity.value = withTiming(0, { duration: 150 }, () => {
+          runOnJS(setAnimatingPiece)(null);
+        });
 
         if (onMove) {
           onMove(from, to);
@@ -193,7 +220,7 @@ export function useChessBoard({
     } finally {
       isAnimating.current = false;
     }
-  }, [onMove, updatePositionFromChess]);
+  }, [onMove, updatePositionFromChess, animOpacity]);
 
   // This function handles the move and animation
   const handleMove = useCallback((from: string, to: string) => {
@@ -242,13 +269,23 @@ export function useChessBoard({
       // Set initial animation position and start animation
       animX.value = fromCoords.x;
       animY.value = fromCoords.y;
+      animOpacity.value = 1;
+      animScale.value = 1;
+      animElevation.value = 5; // Add elevation for better visual effect
 
-      // Animate to destination with callback to finalize the move
-      animX.value = withTiming(toCoords.x, { duration: 300 });
-      animY.value = withTiming(toCoords.y, { duration: 300 }, (finished) => {
+      // Animate to destination with natural movement
+      // Use spring for more natural movement
+      animX.value = withSpring(toCoords.x, SPRING_CONFIG);
+      animY.value = withSpring(toCoords.y, SPRING_CONFIG, (finished) => {
         if (finished) {
-          // This is the critical fix - properly handling the callback
-          runOnJS(finalizeMove)(from, to);
+          // Small bounce effect on arrival
+          animScale.value = withTiming(1.05, { duration: 100 }, () => {
+            animScale.value = withTiming(1, { duration: 100 });
+            animElevation.value = withTiming(1, { duration: 150 });
+            
+            // This is the critical fix - properly handling the callback
+            runOnJS(finalizeMove)(from, to);
+          });
         }
       });
 
@@ -258,7 +295,7 @@ export function useChessBoard({
       isAnimating.current = false;
       return false;
     }
-  }, [position, getSquareCoordinates, animX, animY, finalizeMove]);
+  }, [position, getSquareCoordinates, animX, animY, animOpacity, animScale, animElevation, finalizeMove]);
 
   // Create a gesture handler for chess pieces
   const createPieceGesture = useCallback((square: string, piece: string) => {
@@ -309,6 +346,6 @@ export function useChessBoard({
     handleMove,
     createPieceGesture,
     getSquareCoordinates,
-    updateBoardPosition, // Return the new function
+    updateBoardPosition,
   };
 }
