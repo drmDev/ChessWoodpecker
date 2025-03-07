@@ -95,9 +95,18 @@ export function usePuzzleGame(onPuzzleComplete: () => void): PuzzleGameState & P
   }, [chessInstance]);
 
   const autoSolvePuzzle = useCallback(async () => {
-    if (!state.currentPuzzle) return;
+    if (!state.currentPuzzle) {
+      console.log(`[usePuzzleGame] Cannot auto-solve: no current puzzle`);
+      return;
+    }
 
+    const puzzleId = state.currentPuzzle.id; // Store puzzle ID to check for changes
     const puzzle = state.currentPuzzle;
+
+    console.log(`[usePuzzleGame] Starting auto-solve for puzzle ${puzzle.id}`, {
+      totalMoves: puzzle.solutionMovesUCI.length
+    });
+
     setIsAutoSolving(true);
 
     try {
@@ -106,62 +115,119 @@ export function usePuzzleGame(onPuzzleComplete: () => void): PuzzleGameState & P
       setCurrentPosition(puzzle.fen);
       setCurrentMoveIndex(0);
 
+      console.log(`[usePuzzleGame] Reset to initial position for auto-solve`);
+
       // Play through each move with delay
       for (let i = 0; i < puzzle.solutionMovesUCI.length; i++) {
+        // Check if puzzle has changed during auto-solve
+        if (!state.currentPuzzle || state.currentPuzzle.id !== puzzleId) {
+          console.log(`[usePuzzleGame] Auto-solve aborted: puzzle changed`);
+          break;
+        }
+
+        console.log(`[usePuzzleGame] Auto-solve move ${i + 1}/${puzzle.solutionMovesUCI.length}`, {
+          move: puzzle.solutionMovesUCI[i]
+        });
+
         await new Promise(resolve => setTimeout(resolve, AUTO_SOLVE_MOVE_DELAY));
+
+        // Check again after delay
+        if (!state.currentPuzzle || state.currentPuzzle.id !== puzzleId) {
+          console.log(`[usePuzzleGame] Auto-solve aborted after delay: puzzle changed`);
+          break;
+        }
+
         const { from, to, promotion } = extractMoveComponents(puzzle.solutionMovesUCI[i]);
         await makeMove(from, to, promotion);
         setCurrentMoveIndex(i + 1);
+
+        console.log(`[usePuzzleGame] Auto-solve move ${i + 1} completed`);
       }
 
-      await new Promise(resolve => setTimeout(resolve, NEXT_PUZZLE_DELAY));
+      // Only proceed with delay if puzzle hasn't changed
+      if (state.currentPuzzle && state.currentPuzzle.id === puzzleId) {
+        console.log(`[usePuzzleGame] Auto-solve completed, waiting before loading next puzzle`);
+        await new Promise(resolve => setTimeout(resolve, NEXT_PUZZLE_DELAY));
+        console.log(`[usePuzzleGame] Auto-solve delay completed, ready for next puzzle`);
+      }
+    } catch (error) {
+      console.error(`[usePuzzleGame] Error during auto-solve:`, error);
     } finally {
       setIsAutoSolving(false);
-      onPuzzleComplete();
+
+      console.log(`[usePuzzleGame] Auto-solve process finished, calling onPuzzleComplete`);
+
+      // Only call onPuzzleComplete if the puzzle hasn't changed
+      if (state.currentPuzzle && state.currentPuzzle.id === puzzleId) {
+        onPuzzleComplete();
+      } else {
+        console.log(`[usePuzzleGame] Skipped onPuzzleComplete call because puzzle changed`);
+      }
     }
   }, [state.currentPuzzle, chessInstance, makeMove, onPuzzleComplete]);
-
+  
   const handlePuzzleSuccess = useCallback(() => {
     if (!state.currentPuzzle) return;
-    
-    dispatch({ 
-      type: 'RECORD_PUZZLE_ATTEMPT', 
-      payload: { 
-        puzzle: state.currentPuzzle, 
-        success: true 
-      } 
-    });
-    
-    onPuzzleComplete();
-  }, [dispatch, onPuzzleComplete, state.currentPuzzle]);
 
-  const handlePuzzleFailure = useCallback(() => {
-    if (!state.currentPuzzle) return;
-    
-    dispatch({ 
-      type: 'RECORD_PUZZLE_ATTEMPT', 
-      payload: { 
-        puzzle: state.currentPuzzle, 
-        success: false 
-      } 
-    });
-    
+    // We don't need to track successful puzzles in our simplified approach
+    // but we'll keep this function for symmetry and potential future use
+
     onPuzzleComplete();
-  }, [dispatch, onPuzzleComplete, state.currentPuzzle]);
+  }, [onPuzzleComplete, state.currentPuzzle]);
+
+  // CHANGE: Remove onPuzzleComplete call from handlePuzzleFailure
+  const handlePuzzleFailure = useCallback(() => {
+    if (!state.currentPuzzle) {
+      console.log(`[usePuzzleGame] Cannot record failure: no current puzzle`);
+      return;
+    }
+
+    console.log(`[usePuzzleGame] Recording failed puzzle attempt`, {
+      puzzleId: state.currentPuzzle.id,
+      theme: state.currentPuzzle.theme || 'Uncategorized'
+    });
+
+    dispatch({
+      type: 'RECORD_FAILED_PUZZLE',
+      payload: {
+        id: state.currentPuzzle.id,
+        theme: state.currentPuzzle.theme || 'Uncategorized'
+      }
+    });
+
+    console.log(`[usePuzzleGame] Puzzle failure recorded`);
+  }, [dispatch, state.currentPuzzle]);
 
   const handleMove = useCallback(async (from: string, to: string) => {
     if (!state.currentPuzzle || isAutoSolving || isOpponentMoving) return;
 
+    console.log(`[usePuzzleGame] Processing move from ${from} to ${to}`, {
+      puzzleId: state.currentPuzzle.id,
+      currentMoveIndex,
+      isAutoSolving,
+      isOpponentMoving
+    });
+
     const puzzle = state.currentPuzzle;
-    
+
     // Load current position and replay moves
     if (!replayMoves(chessInstance, puzzle.fen, puzzle.solutionMovesUCI.slice(0, currentMoveIndex))) {
+      console.error(`[usePuzzleGame] Failed to replay moves to current position`);
       return;
     }
 
     // Validate the move
     const shouldPromote = isPromotionMove(chessInstance, from, to);
     const moveToValidate = shouldPromote ? `${to}q` : to;
+
+    console.log(`[usePuzzleGame] Validating move`, {
+      from,
+      to,
+      shouldPromote,
+      moveToValidate,
+      currentMoveIndex,
+      expectedMove: puzzle.solutionMovesUCI[currentMoveIndex]
+    });
 
     const result = validatePuzzleMove(
       chessInstance,
@@ -171,33 +237,57 @@ export function usePuzzleGame(onPuzzleComplete: () => void): PuzzleGameState & P
     );
 
     if (result.isValid) {
+      console.log(`[usePuzzleGame] Move is valid`, {
+        isComplete: result.isComplete,
+        newMoveIndex: currentMoveIndex + 1
+      });
+
       // Make the user's move
       await makeMove(from, to, shouldPromote ? 'q' : undefined);
       const newMoveIndex = currentMoveIndex + 1;
       setCurrentMoveIndex(newMoveIndex);
-      
+
       if (result.isComplete) {
+        console.log(`[usePuzzleGame] Puzzle completed successfully`);
         playSound('success');
         // Record successful attempt before completing
         handlePuzzleSuccess();
       } else {
+        console.log(`[usePuzzleGame] Preparing opponent's move`);
+
         // Make opponent's move after a short delay
         setIsOpponentMoving(true);
         await new Promise(resolve => setTimeout(resolve, OPPONENT_MOVE_DELAY));
-        
+
         // Get the next move using the updated move index
         const { from: oppFrom, to: oppTo, promotion: oppPromotion } = extractMoveComponents(puzzle.solutionMovesUCI[newMoveIndex]);
+
+        console.log(`[usePuzzleGame] Making opponent move`, {
+          from: oppFrom,
+          to: oppTo,
+          promotion: oppPromotion
+        });
+
         await makeMove(oppFrom, oppTo, oppPromotion);
         setCurrentMoveIndex(newMoveIndex + 1);
         setIsOpponentMoving(false);
+
+        console.log(`[usePuzzleGame] Opponent move completed`);
       }
     } else {
+      console.log(`[usePuzzleGame] Move is invalid, starting auto-solve sequence`);
+
       playSound('failure');
-      // Record failed attempt before auto-solving
+
+      // First record the failure
       handlePuzzleFailure();
+
+      // Then start auto-solve (which will call onPuzzleComplete when done)
+      console.log(`[usePuzzleGame] Beginning auto-solve process`);
+
       autoSolvePuzzle();
     }
-  }, [state.currentPuzzle, currentMoveIndex, makeMove, isAutoSolving, isOpponentMoving, autoSolvePuzzle, onPuzzleComplete, handlePuzzleSuccess, handlePuzzleFailure]);
+  }, [state.currentPuzzle, currentMoveIndex, makeMove, isAutoSolving, isOpponentMoving, autoSolvePuzzle, handlePuzzleSuccess, handlePuzzleFailure]);
 
   const isUserTurn = useCallback(() => {
     if (!state.currentPuzzle) return false;
