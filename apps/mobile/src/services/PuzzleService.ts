@@ -41,8 +41,6 @@ class PuzzleService {
         return cachedPuzzle;
       }
 
-      console.log(`[PuzzleService] Cache MISS for puzzle ${randomId}, fetching from backend...`);
-
       // If not in cache, fetch from backend
       const response = await fetch(`${this.baseUrl}/puzzles/${randomId}`);
 
@@ -91,7 +89,6 @@ class PuzzleService {
 
       // Store in cache
       await PuzzleCacheService.storePuzzle(puzzle);
-      console.log(`[PuzzleService] Stored puzzle ${randomId} in cache`);
 
       return puzzle;
     } catch (error: any) {

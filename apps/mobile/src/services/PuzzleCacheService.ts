@@ -15,9 +15,27 @@ export class PuzzleCacheService {
    */
   static async getPuzzle(id: string): Promise<Puzzle | null> {
     try {
+      console.debug(`Attempting to get puzzle from cache`, { puzzleId: id });
+      const startTime = Date.now();
+      
       const cached = await AsyncStorage.getItem(`${PUZZLE_CACHE_PREFIX}${id}`);
-      return cached ? JSON.parse(cached) : null;
-    } catch (_error) {
+      
+      if (cached) {
+        const puzzle = JSON.parse(cached) as Puzzle;
+        console.debug(`Puzzle cache HIT`, { 
+          puzzleId: id, 
+          durationMs: Date.now() - startTime 
+        });
+        return puzzle;
+      }
+      
+      console.debug(`Puzzle cache MISS`, { 
+        puzzleId: id, 
+        durationMs: Date.now() - startTime 
+      });
+      return null;
+    } catch (error) {
+      console.error(`Error getting puzzle from cache`, error);
       return null;
     }
   }
@@ -27,64 +45,108 @@ export class PuzzleCacheService {
    */
   static async storePuzzle(puzzle: Puzzle): Promise<void> {
     try {
-      await AsyncStorage.setItem(
-        `${PUZZLE_CACHE_PREFIX}${puzzle.id}`,
-        JSON.stringify(puzzle)
-      );
-    } catch (_error) {
-      // Silently handle storage errors
+      console.debug(`Storing puzzle in cache`, { 
+        puzzleId: puzzle.id,
+        theme: puzzle.theme
+      });
+      const startTime = Date.now();
+      
+      const puzzleJson = JSON.stringify(puzzle);
+      await AsyncStorage.setItem(`${PUZZLE_CACHE_PREFIX}${puzzle.id}`, puzzleJson);
+      
+      console.debug(`Puzzle stored in cache successfully`, { 
+        puzzleId: puzzle.id,
+        sizeBytes: puzzleJson.length,
+        durationMs: Date.now() - startTime
+      });
+    } catch (error) {
+      console.error(`Error storing puzzle in cache`, error);
+      throw error;
     }
   }
 
   /**
-   * Clear all puzzles from cache
+   * Clear the puzzle cache
    */
   static async clearCache(): Promise<void> {
     try {
-      // Get all keys
+      console.info(`Clearing puzzle cache`);
+      const startTime = Date.now();
+      
+      // Get all keys for puzzles
       const keys = await AsyncStorage.getAllKeys();
       const puzzleKeys = keys.filter(key => key.startsWith(PUZZLE_CACHE_PREFIX));
       
-      if (puzzleKeys.length === 0) {
-        console.log('🧩 Cache is already empty');
-        return;
+      console.debug(`Found puzzle cache keys to clear`, { count: puzzleKeys.length });
+      
+      // Track what we're removing
+      const removedItems = [];
+      
+      // Remove puzzle cache entries if any exist
+      if (puzzleKeys.length > 0) {
+        await AsyncStorage.multiRemove(puzzleKeys);
+        removedItems.push(`${puzzleKeys.length} puzzle cache entries`);
       }
       
-      // Remove all puzzle entries
-      await AsyncStorage.multiRemove(puzzleKeys);
-      console.log(`🧩 Cleared ${puzzleKeys.length} puzzles from cache`);
+      console.info(`Cache clearing completed successfully`, { 
+        removedItems,
+        durationMs: Date.now() - startTime
+      });
     } catch (error) {
-      console.error('[PuzzleCacheService] Error clearing cache:', error);
-      throw new Error('Failed to clear puzzle cache');
+      console.error(`Error clearing cache`, error);
+      throw error;
     }
   }
 
   /**
-   * Debug function to inspect cache contents
+   * Debug function to inspect the puzzle cache
    */
   static async debugInspectCache(): Promise<void> {
     try {
-      // Get all keys
+      console.info(`Inspecting puzzle cache`);
+      const startTime = Date.now();
+      
       const keys = await AsyncStorage.getAllKeys();
       const puzzleKeys = keys.filter(key => key.startsWith(PUZZLE_CACHE_PREFIX));
       
-      if (puzzleKeys.length === 0) {
-        console.log('🧩 Cache is empty');
-        return;
-      }
-      
-      // Get all puzzle data
-      const cacheData = await AsyncStorage.multiGet(puzzleKeys);
-      
-      // Log each puzzle in a readable format
-      console.log('🧩 Puzzle Cache Contents:');
-      cacheData.forEach(([key, value]) => {
-        const puzzle = value ? JSON.parse(value) : null;
-        console.log(`\nPuzzle: ${key.replace(PUZZLE_CACHE_PREFIX, '')}`);
-        console.log('Data:', puzzle);
+      console.info(`Puzzle cache statistics`, { 
+        totalKeys: puzzleKeys.length,
+        allStorageKeys: keys.length
       });
-    } catch (_error) {
-      console.error('[PuzzleCacheService] Error inspecting cache:', _error);
+      
+      if (puzzleKeys.length > 0) {
+        const puzzles = await AsyncStorage.multiGet(puzzleKeys);
+        
+        // Calculate total size and theme distribution
+        let totalSize = 0;
+        const themeDistribution: Record<string, number> = {};
+        
+        puzzles.forEach(([key, value]) => {
+          if (value) {
+            totalSize += value.length;
+            
+            try {
+              const puzzle = JSON.parse(value) as Puzzle;
+              const theme = puzzle.theme || 'Unknown';
+              
+              themeDistribution[theme] = (themeDistribution[theme] || 0) + 1;
+            } catch (e) {
+              // Skip invalid JSON
+            }
+          }
+        });
+        
+        console.info(`Puzzle cache details`, {
+          totalSizeBytes: totalSize,
+          averagePuzzleSizeBytes: totalSize / puzzles.length,
+          themeDistribution,
+          durationMs: Date.now() - startTime
+        });
+      } else {
+        console.info(`Puzzle cache is empty`);
+      }
+    } catch (error) {
+      console.error(`Error inspecting puzzle cache`, error);
     }
   }
 
@@ -98,17 +160,12 @@ export class PuzzleCacheService {
         .filter(key => key.startsWith(PUZZLE_CACHE_PREFIX))
         .map(key => key.replace(PUZZLE_CACHE_PREFIX, ''));
     } catch (error) {
-      console.error('[PuzzleCacheService] Error getting cached puzzle IDs:', error);
+      console.error(`Error getting cached puzzle IDs`, error);
       return [];
     }
   }
 }
 
-// Expose debug functions to global scope
-global.debugPuzzleCache = async () => {
-  await PuzzleCacheService.debugInspectCache();
-};
-
-global.clearPuzzleCache = async () => {
-  await PuzzleCacheService.clearCache();
-}; 
+// Set up global debug functions
+global.debugPuzzleCache = PuzzleCacheService.debugInspectCache;
+global.clearPuzzleCache = PuzzleCacheService.clearCache; 

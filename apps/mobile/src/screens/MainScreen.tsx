@@ -1,43 +1,33 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAppState } from '../contexts/AppStateContext';
 import OrientableChessBoard from '../components/chess/mobile/OrientableChessBoard';
 import { TurnIndicator } from '../components/chess/mobile/TurnIndicator';
-import { SessionManager } from '../components/session/SessionManager';
 import { usePuzzleGame } from '../hooks/usePuzzleGame';
 import { ErrorBoundary } from '../components/shared/ErrorBoundary';
 import { puzzleService } from '../services/PuzzleService';
 import { PuzzleCacheDebug } from '../components/debug/PuzzleCacheDebug';
+import { playSound, SoundTypes } from '../utils/sounds';
 
 export const MainScreen: React.FC = () => {
     const { theme } = useTheme();
     const { state, dispatch } = useAppState();
     const [isInteractingWithBoard, setIsInteractingWithBoard] = useState(false);
     
-    const isSessionActive = !state.sessionStats.isCurrentSessionPaused() && state.currentPuzzle !== null;
+    const isSessionActive = state.isSessionActive && state.currentPuzzle !== null;
     
     const handleFetchNewPuzzle = async () => {
         try {
             const currentPuzzle = state.currentPuzzle;
-            console.log('[MainScreen] Attempting to fetch new puzzle:', {
-                currentPuzzleId: currentPuzzle?.id || 'none',
-                sessionActive: isSessionActive
-            });
-            
             if (!currentPuzzle) {
-                console.log('[MainScreen] Cannot fetch new puzzle: no active session');
                 return;
             }
             dispatch({ type: 'SET_LOADING', payload: true });
             const puzzle = await puzzleService.fetchRandomPuzzle();
-            console.log('[MainScreen] Successfully fetched new puzzle:', {
-                id: puzzle.id,
-                fen: puzzle.fen
-            });
             dispatch({ type: 'SET_CURRENT_PUZZLE', payload: puzzle });
         } catch (error) {
-            console.error('[MainScreen] Failed to fetch new puzzle:', error);
+            console.error('Failed to fetch new puzzle:', error);
         } finally {
             dispatch({ type: 'SET_LOADING', payload: false });
         }
@@ -55,12 +45,6 @@ export const MainScreen: React.FC = () => {
     } = usePuzzleGame(handleFetchNewPuzzle);
 
     useEffect(() => {
-        console.log('[MainScreen] Screen state updated:', {
-            sessionActive: isSessionActive,
-            isLoading: state.isLoading,
-            boardInteractive: !isAutoSolving && !isOpponentMoving,
-            currentPuzzleId: state.currentPuzzle?.id || 'none'
-        });
     }, [isSessionActive, state.isLoading, isAutoSolving, isOpponentMoving, state.currentPuzzle]);
 
     const handleDragStart = () => {
@@ -72,6 +56,29 @@ export const MainScreen: React.FC = () => {
     const handleDragEnd = () => {
         if (!isAutoSolving && !isOpponentMoving) {
             setIsInteractingWithBoard(false);
+        }
+    };
+
+    const handleStartSession = async () => {
+        try {
+            await playSound(SoundTypes.START_SESSION);
+            dispatch({ type: 'START_SESSION' });
+            dispatch({ type: 'SET_LOADING', payload: true });
+            const puzzle = await puzzleService.fetchRandomPuzzle();
+            dispatch({ type: 'SET_CURRENT_PUZZLE', payload: puzzle });
+        } catch (error) {
+            console.error('Failed to start session:', error);
+        } finally {
+            dispatch({ type: 'SET_LOADING', payload: false });
+        }
+    };
+
+    const handleEndSession = async () => {
+        try {
+            await playSound(SoundTypes.END_SESSION);
+            dispatch({ type: 'END_SESSION' });
+        } catch (error) {
+            console.error('Failed to end session:', error);
         }
     };
 
@@ -106,7 +113,27 @@ export const MainScreen: React.FC = () => {
                         </View>
                     )}
                     
-                    <SessionManager />
+                    <View style={styles.buttonContainer}>
+                        {!isSessionActive ? (
+                            <TouchableOpacity 
+                                style={[styles.button, { backgroundColor: theme.primary }]} 
+                                onPress={handleStartSession}
+                                disabled={state.isLoading}
+                            >
+                                <Text style={styles.buttonText}>
+                                    {state.isLoading ? 'Loading...' : 'Start Session'}
+                                </Text>
+                            </TouchableOpacity>
+                        ) : (
+                            <TouchableOpacity 
+                                style={[styles.button, { backgroundColor: theme.error }]} 
+                                onPress={handleEndSession}
+                            >
+                                <Text style={styles.buttonText}>End Session</Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
+                    
                     <PuzzleCacheDebug />
                 </ScrollView>
             </ErrorBoundary>
@@ -144,5 +171,21 @@ const styles = StyleSheet.create({
         fontSize: 16,
         textAlign: 'center',
         lineHeight: 24,
+    },
+    buttonContainer: {
+        padding: 16,
+        alignItems: 'center',
+    },
+    button: {
+        paddingVertical: 12,
+        paddingHorizontal: 24,
+        borderRadius: 8,
+        minWidth: 200,
+        alignItems: 'center',
+    },
+    buttonText: {
+        color: 'white',
+        fontSize: 16,
+        fontWeight: 'bold',
     },
 }); 
