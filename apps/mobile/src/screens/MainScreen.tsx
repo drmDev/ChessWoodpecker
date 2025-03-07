@@ -6,6 +6,7 @@ import OrientableChessBoard from '../components/chess/mobile/OrientableChessBoar
 import { TurnIndicator } from '../components/chess/mobile/TurnIndicator';
 import { usePuzzleGame } from '../hooks/usePuzzleGame';
 import { ErrorBoundary } from '../components/shared/ErrorBoundary';
+import { LoadingOverlay } from '../components/shared/LoadingOverlay';
 import { puzzleService } from '../services/PuzzleService';
 import { PuzzleCacheDebug } from '../components/debug/PuzzleCacheDebug';
 import { playSound, SoundTypes } from '../utils/sounds';
@@ -14,6 +15,8 @@ export const MainScreen: React.FC = () => {
     const { theme } = useTheme();
     const { state, dispatch } = useAppState();
     const [isInteractingWithBoard, setIsInteractingWithBoard] = useState(false);
+    const [isPuzzleSetupComplete, setIsPuzzleSetupComplete] = useState(false);
+    const [isTransitioningToPuzzle, setIsTransitioningToPuzzle] = useState(false);
     
     const isSessionActive = state.isSessionActive && state.currentPuzzle !== null;
     
@@ -23,6 +26,11 @@ export const MainScreen: React.FC = () => {
             if (!currentPuzzle) {
                 return;
             }
+            
+            // Start transition to new puzzle
+            setIsTransitioningToPuzzle(true);
+            setIsPuzzleSetupComplete(false);
+            
             dispatch({ type: 'SET_LOADING', payload: true });
             const puzzle = await puzzleService.fetchRandomPuzzle();
             dispatch({ type: 'SET_CURRENT_PUZZLE', payload: puzzle });
@@ -44,8 +52,38 @@ export const MainScreen: React.FC = () => {
         isAutoSolving
     } = usePuzzleGame(handleFetchNewPuzzle);
 
+    // Show loading overlay in these cases:
+    // 1. During initial session start or between puzzles (isTransitioningToPuzzle)
+    // 2. When puzzle is not fully set up yet
+    // 3. But only if a session is active
+    const showLoadingOverlay = ((state.isLoading || isTransitioningToPuzzle || !isPuzzleSetupComplete) && state.isSessionActive) && !isAutoSolving;
+
+    // Determine the appropriate loading message
+    const getLoadingMessage = () => {
+        if (isTransitioningToPuzzle) return "Loading next puzzle...";
+        return "Setting up puzzle...";
+    };
+
+    // When currentPosition changes, it means the puzzle is set up
     useEffect(() => {
-    }, [isSessionActive, state.isLoading, isAutoSolving, isOpponentMoving, state.currentPuzzle]);
+        if (currentPosition && state.currentPuzzle) {
+            // Add a small delay to ensure smooth transition
+            const timer = setTimeout(() => {
+                setIsPuzzleSetupComplete(true);
+                setIsTransitioningToPuzzle(false);
+            }, 500);
+            
+            return () => clearTimeout(timer);
+        }
+    }, [currentPosition, state.currentPuzzle]);
+
+    // Reset puzzle setup state when session ends
+    useEffect(() => {
+        if (!state.isSessionActive) {
+            setIsPuzzleSetupComplete(false);
+            setIsTransitioningToPuzzle(false);
+        }
+    }, [state.isSessionActive]);
 
     const handleDragStart = () => {
         if (!isAutoSolving && !isOpponentMoving) {
@@ -62,6 +100,8 @@ export const MainScreen: React.FC = () => {
     const handleStartSession = async () => {
         try {
             await playSound(SoundTypes.START_SESSION);
+            setIsPuzzleSetupComplete(false);
+            setIsTransitioningToPuzzle(true);
             dispatch({ type: 'START_SESSION' });
             dispatch({ type: 'SET_LOADING', payload: true });
             const puzzle = await puzzleService.fetchRandomPuzzle();
@@ -90,7 +130,7 @@ export const MainScreen: React.FC = () => {
                     contentContainerStyle={styles.contentContainer}
                     scrollEnabled={!isInteractingWithBoard}
                 >
-                    {isSessionActive && state.currentPuzzle && !state.isLoading && (
+                    {isSessionActive && state.currentPuzzle && (
                         <View style={styles.boardContainer}>
                             <TurnIndicator isWhiteToMove={state.currentPuzzle.isWhiteToMove} />
                             <OrientableChessBoard
@@ -136,6 +176,12 @@ export const MainScreen: React.FC = () => {
                     
                     <PuzzleCacheDebug />
                 </ScrollView>
+                
+                {/* Loading overlay for puzzle transitions */}
+                <LoadingOverlay 
+                    visible={showLoadingOverlay} 
+                    message={getLoadingMessage()}
+                />
             </ErrorBoundary>
         </SafeAreaView>
     );
@@ -188,4 +234,4 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: 'bold',
     },
-}); 
+});
