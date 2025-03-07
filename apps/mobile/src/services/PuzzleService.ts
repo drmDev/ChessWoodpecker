@@ -70,12 +70,8 @@ class PuzzleService {
         }),
         fen,
         isWhiteToMove,
-        // Initialize user progress
-        attempts: 0,
-        // Empty non-essential fields
-        rating: 0,
-        plays: 0,
-        themes: []
+        // Remove unnecessary fields
+        attempts: 0
       };
 
       // Store in cache
@@ -86,6 +82,20 @@ class PuzzleService {
     } catch (error: any) {
       console.error('[PuzzleService] Error fetching random puzzle:', error);
       throw new Error(`Failed to fetch puzzle: ${error.message}`);
+    }
+  }
+
+  async fetchPuzzleById(id: string): Promise<Puzzle | null> {
+    try {
+      // First check cache
+      const cachedPuzzle = await PuzzleCacheService.getPuzzle(id);
+      if (cachedPuzzle) {
+        return cachedPuzzle;
+      }
+      return null;
+    } catch (error) {
+      console.error('Failed to fetch puzzle by ID:', error);
+      return null;
     }
   }
 }
