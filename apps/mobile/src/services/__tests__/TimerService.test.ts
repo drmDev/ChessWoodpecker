@@ -44,12 +44,12 @@ describe('TimerService', () => {
     expect(timerService.isRunning()).toBe(false);
   });
   
-  test('should dispatch UPDATE_SESSION_TIME_DELTA action when timer ticks', () => {
+  test('should dispatch UPDATE_TIME_DELTA action when timer ticks', () => {
     timerService.start();
     jest.advanceTimersByTime(1000);
     
     expect(mockDispatch).toHaveBeenCalledWith({
-      type: 'UPDATE_SESSION_TIME_DELTA',
+      type: 'UPDATE_TIME_DELTA',
       payload: expect.any(Number)
     });
   });

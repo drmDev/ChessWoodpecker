@@ -102,9 +102,7 @@ describe('PuzzleModel', () => {
     };
 
     it('should process valid puzzle data', () => {
-      console.log('Valid puzzle data:', JSON.stringify(validPuzzleData));
       const result = processPuzzleData(validPuzzleData);
-      console.log('Result:', result);
       expect(result).not.toBeNull();
       if (result) {
         expect(result.id).toBe('test1');

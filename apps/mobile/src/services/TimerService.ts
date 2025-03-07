@@ -47,7 +47,7 @@ export class TimerService {
       this.lastTick = now;
       
       this.dispatch({ 
-        type: 'UPDATE_SESSION_TIME_DELTA', 
+        type: 'UPDATE_TIME_DELTA', 
         payload: elapsed 
       });
     }, this.tickInterval);

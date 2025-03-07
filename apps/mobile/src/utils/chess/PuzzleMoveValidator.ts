@@ -38,7 +38,6 @@ export function validatePuzzleMove(
 
     // If move is illegal in this position
     if (!moveResult) {
-      console.log('Move is illegal:', userMove);
       return {
         isValid: false,
         isComplete: false,
@@ -52,16 +51,8 @@ export function validatePuzzleMove(
     // Get the expected move at this position
     const expectedMove = solutionMoves[currentMoveIndex];
     
-    console.log('Comparing moves:', {
-      userMoveUCI,
-      expectedMove,
-      userMove,
-      moveResult
-    });
-    
     // If moves don't match, move is invalid
     if (userMoveUCI !== expectedMove) {
-      console.log('Moves do not match');
       return {
         isValid: false,
         isComplete: false,
@@ -79,7 +70,6 @@ export function validatePuzzleMove(
     };
   } catch (error) {
     // If any chess.js operations fail, consider the move invalid
-    console.error('Error validating move:', error);
     return {
       isValid: false,
       isComplete: false,
@@ -130,4 +120,53 @@ export function debugValidateMove(
   } catch (error) {
     return `Error during validation: ${error}`;
   }
+}
+
+function isLegalMove(chess: Chess, userMove: { from: string; to: string; promotion?: string }): boolean {
+  try {
+    const moves = chess.moves({ verbose: true });
+    const isLegal = moves.some(move => 
+      move.from === userMove.from && 
+      move.to === userMove.to && 
+      (move.promotion === userMove.promotion || (!move.promotion && !userMove.promotion))
+    );
+    
+    if (!isLegal) {
+      // Move is illegal
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+export function validateMove(
+  chess: Chess, 
+  userMove: { from: string; to: string; promotion?: string },
+  expectedMove: string
+): boolean {
+  // First check if the move is legal
+  if (!isLegalMove(chess, userMove)) {
+    return false;
+  }
+  
+  // Convert user move to UCI format for comparison
+  const userMoveUCI = `${userMove.from}${userMove.to}${userMove.promotion || ''}`;
+  
+  // Make the move to get the result
+  const moveResult = chess.move({
+    from: userMove.from,
+    to: userMove.to,
+    promotion: userMove.promotion
+  });
+  
+  // Undo the move to restore the position
+  chess.undo();
+  
+  // Compare with expected move
+  const movesMatch = userMoveUCI === expectedMove;
+  
+  return movesMatch;
 } 

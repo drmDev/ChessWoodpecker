@@ -163,7 +163,6 @@ export function useChessBoard({
   // This function completes the move after animation
   const finalizeMove = useCallback((from: string, to: string) => {
     try {
-      console.log('[useChessBoard] Finalizing move:', { from, to });
       const chess = chessRef.current;
 
       const move = chess.move({
@@ -190,7 +189,7 @@ export function useChessBoard({
         }
       }
     } catch (error) {
-      console.error('[useChessBoard] Error finalizing move:', error);
+      // Silently handle errors
     } finally {
       isAnimating.current = false;
     }
@@ -255,7 +254,7 @@ export function useChessBoard({
 
       return true;
     } catch (error) {
-      console.error('[useChessBoard] Error handling move:', error);
+      // Silently handle errors
       isAnimating.current = false;
       return false;
     }

@@ -31,6 +31,7 @@ describe('PuzzleService', () => {
   const mockProcessedPuzzle: Puzzle = {
     id: 'abc12',
     pgn: '1. e4 e5 2. Nf3',
+    theme: 'Opening',
     initialPly: 4,
     solutionMovesUCI: ['d2d4', 'e5d4'],
     solutionMovesSAN: ['d4', 'dxe4'],
