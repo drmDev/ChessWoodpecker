@@ -7,6 +7,7 @@ jest.mock('react-native-gesture-handler', () => {
     const mock = {
       onBegin: jest.fn().mockReturnThis(),
       onFinalize: jest.fn().mockReturnThis(),
+      onChange: jest.fn().mockReturnThis(),
     };
     return mock;
   };
@@ -14,6 +15,7 @@ jest.mock('react-native-gesture-handler', () => {
   return {
     Gesture: {
       Pan: () => createChainableMock(),
+      Simultaneous: (...gestures: any[]) => createChainableMock(),
     },
   };
 });
@@ -31,6 +33,13 @@ jest.mock('react-native-reanimated', () => {
     return toValue;
   };
 
+  const mockWithSpring = (toValue: number, config?: any, callback?: (finished: boolean) => void) => {
+    if (callback) {
+      callback(true);
+    }
+    return toValue;
+  };
+
   const mockRunOnJS = (fn: Function) => fn;
 
   const mockUseAnimatedStyle = (fn: () => any) => {
@@ -40,8 +49,13 @@ jest.mock('react-native-reanimated', () => {
   return {
     useSharedValue: mockSharedValue,
     withTiming: mockWithTiming,
+    withSpring: mockWithSpring,
     runOnJS: mockRunOnJS,
     useAnimatedStyle: mockUseAnimatedStyle,
+    Easing: {
+      bezier: () => 'bezierEasing',
+      ease: 'easeEasing',
+    },
   };
 });
 
