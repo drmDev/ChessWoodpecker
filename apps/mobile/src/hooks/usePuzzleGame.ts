@@ -34,28 +34,110 @@ const OPPONENT_MOVE_DELAY = 500;
  */
 export function usePuzzleGame(onPuzzleComplete: () => void): PuzzleGameState & PuzzleGameActions {
   const { state, dispatch } = useAppState();
-  const [currentMoveIndex, setCurrentMoveIndex] = useState(0);
+  const [chessInstance] = useState(() => {
+    console.log('[usePuzzleGame] Initializing new Chess instance');
+    return new Chess();
+  });
   const [currentPosition, setCurrentPosition] = useState<string | null>(null);
-  const [chessInstance] = useState(() => new Chess());
+  const [currentMoveIndex, setCurrentMoveIndex] = useState(0);
   const [isOpponentMoving, setIsOpponentMoving] = useState(false);
   const [isAutoSolving, setIsAutoSolving] = useState(false);
 
-  // Reset game state when puzzle changes
+  // Reset game state when a new puzzle is loaded or session ends
   useEffect(() => {
-    if (state.sessionData?.currentPuzzle) {
-      resetGame(state.sessionData.currentPuzzle);
+    const puzzle = state.currentPuzzle;
+    if (puzzle) {
+      console.log('[usePuzzleGame] Loading new puzzle:', {
+        id: puzzle.id,
+        fen: puzzle.fen
+      });
+      
+      chessInstance.load(puzzle.fen);
+      // Update all state synchronously to avoid intermediate states
+      const newState = {
+        position: puzzle.fen,
+        moveIndex: 0,
+        isOpponentMoving: false,
+        isAutoSolving: false
+      };
+      setCurrentPosition(newState.position);
+      setCurrentMoveIndex(newState.moveIndex);
+      setIsOpponentMoving(newState.isOpponentMoving);
+      setIsAutoSolving(newState.isAutoSolving);
+      
+      console.log('[usePuzzleGame] Game state:', {
+        status: 'active',
+        position: newState.position,
+        moveIndex: newState.moveIndex,
+        isUserTurn: true,
+        isGameOver: false,
+        isAutoSolving: newState.isAutoSolving,
+        isOpponentMoving: newState.isOpponentMoving
+      });
+    } else {
+      console.log('[usePuzzleGame] Session ended or no active puzzle, resetting state');
+      chessInstance.reset(); // Reset to initial position
+      // Update all state synchronously to avoid intermediate states
+      const newState = {
+        position: null,
+        moveIndex: 0,
+        isOpponentMoving: false,
+        isAutoSolving: false
+      };
+      setCurrentPosition(newState.position);
+      setCurrentMoveIndex(newState.moveIndex);
+      setIsOpponentMoving(newState.isOpponentMoving);
+      setIsAutoSolving(newState.isAutoSolving);
+      
+      console.log('[usePuzzleGame] Game state:', {
+        status: 'inactive',
+        position: 'no position',
+        moveIndex: newState.moveIndex,
+        isUserTurn: false,
+        isGameOver: false,
+        isAutoSolving: newState.isAutoSolving,
+        isOpponentMoving: newState.isOpponentMoving
+      });
     }
-  }, [state.sessionData?.currentPuzzle]);
+  }, [state.currentPuzzle]);
+
+  // Log state changes in a more descriptive way
+  useEffect(() => {
+    // Only log state changes after initial setup
+    if (currentPosition === state.currentPuzzle?.fen || (!state.currentPuzzle && currentPosition === null)) {
+      const puzzle = state.currentPuzzle;
+      const status = puzzle ? 'active' : 'inactive';
+      const position = currentPosition || 'no position';
+      
+      console.log('[usePuzzleGame] Game state:', {
+        status,
+        position,
+        moveIndex: currentMoveIndex,
+        isUserTurn: isUserTurn(),
+        isGameOver: isGameOver(),
+        isAutoSolving,
+        isOpponentMoving
+      });
+    }
+  }, [currentPosition, currentMoveIndex, isOpponentMoving, isAutoSolving, state.currentPuzzle]);
 
   const resetGame = useCallback((puzzle: Puzzle) => {
+    console.log('[usePuzzleGame] Resetting game with puzzle:', {
+      id: puzzle.id,
+      fen: puzzle.fen
+    });
+    
+    chessInstance.load(puzzle.fen);
     setCurrentPosition(puzzle.fen);
     setCurrentMoveIndex(0);
     setIsOpponentMoving(false);
     setIsAutoSolving(false);
-    chessInstance.load(puzzle.fen);
-  }, []);
+    
+    console.log('[usePuzzleGame] Game reset complete, new position:', chessInstance.fen());
+  }, [chessInstance]);
 
   const makeMove = useCallback(async (from: string, to: string, promotion?: string) => {
+    console.log('[usePuzzleGame] Making move:', { from, to, promotion, currentPosition: chessInstance.fen() });
     const moveResult = chessInstance.move({ from, to, promotion });
     if (!moveResult) return false;
 
@@ -68,9 +150,9 @@ export function usePuzzleGame(onPuzzleComplete: () => void): PuzzleGameState & P
   }, [chessInstance]);
 
   const autoSolvePuzzle = useCallback(async () => {
-    if (!state.sessionData?.currentPuzzle) return;
+    if (!state.currentPuzzle) return;
 
-    const puzzle = state.sessionData.currentPuzzle;
+    const puzzle = state.currentPuzzle;
     setIsAutoSolving(true);
 
     try {
@@ -92,12 +174,12 @@ export function usePuzzleGame(onPuzzleComplete: () => void): PuzzleGameState & P
       setIsAutoSolving(false);
       onPuzzleComplete();
     }
-  }, [state.sessionData?.currentPuzzle, chessInstance, makeMove, onPuzzleComplete]);
+  }, [state.currentPuzzle, chessInstance, makeMove, onPuzzleComplete]);
 
   const handleMove = useCallback(async (from: string, to: string) => {
-    if (!state.sessionData?.currentPuzzle || isAutoSolving || isOpponentMoving) return;
+    if (!state.currentPuzzle || isAutoSolving || isOpponentMoving) return;
 
-    const puzzle = state.sessionData.currentPuzzle;
+    const puzzle = state.currentPuzzle;
     
     // Load current position and replay moves
     if (!replayMoves(chessInstance, puzzle.fen, puzzle.solutionMovesUCI.slice(0, currentMoveIndex))) {
@@ -124,6 +206,14 @@ export function usePuzzleGame(onPuzzleComplete: () => void): PuzzleGameState & P
       
       if (result.isComplete) {
         playSound('success');
+        // Record successful attempt before completing
+        dispatch({ 
+          type: 'RECORD_PUZZLE_ATTEMPT', 
+          payload: { 
+            puzzle: state.currentPuzzle,
+            success: true 
+          }
+        });
         onPuzzleComplete();
       } else {
         // Make opponent's move after a short delay
@@ -138,20 +228,28 @@ export function usePuzzleGame(onPuzzleComplete: () => void): PuzzleGameState & P
       }
     } else {
       playSound('failure');
+      // Record failed attempt before auto-solving
+      dispatch({ 
+        type: 'RECORD_PUZZLE_ATTEMPT', 
+        payload: { 
+          puzzle: state.currentPuzzle,
+          success: false 
+        }
+      });
       autoSolvePuzzle();
     }
-  }, [state.sessionData?.currentPuzzle, currentMoveIndex, makeMove, isAutoSolving, isOpponentMoving, autoSolvePuzzle, onPuzzleComplete]);
+  }, [state.currentPuzzle, currentMoveIndex, makeMove, isAutoSolving, isOpponentMoving, autoSolvePuzzle, onPuzzleComplete, dispatch]);
 
   const isUserTurn = useCallback(() => {
-    if (!state.sessionData?.currentPuzzle) return false;
+    if (!state.currentPuzzle) return false;
     if (currentMoveIndex === 0) return true;
-    return (currentMoveIndex % 2 === 0) === state.sessionData.currentPuzzle.isWhiteToMove;
-  }, [currentMoveIndex, state.sessionData?.currentPuzzle]);
+    return (currentMoveIndex % 2 === 0) === state.currentPuzzle.isWhiteToMove;
+  }, [currentMoveIndex, state.currentPuzzle]);
 
   const isGameOver = useCallback(() => {
-    if (!state.sessionData?.currentPuzzle) return false;
-    return currentMoveIndex >= state.sessionData.currentPuzzle.solutionMovesUCI.length;
-  }, [currentMoveIndex, state.sessionData?.currentPuzzle]);
+    if (!state.currentPuzzle) return false;
+    return currentMoveIndex >= state.currentPuzzle.solutionMovesUCI.length;
+  }, [currentMoveIndex, state.currentPuzzle]);
 
   return {
     currentPosition,

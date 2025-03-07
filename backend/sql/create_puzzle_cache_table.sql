@@ -5,5 +5,6 @@ CREATE TABLE Lichess_Puzzle_Cache (
     lichess_puzzle_id VARCHAR(5) NOT NULL,
     pgn TEXT NOT NULL,
     initial_ply INT NOT NULL,
-    solution TEXT[] NOT NULL
+    solution TEXT[] NOT NULL,
+    theme VARCHAR(50) NOT NULL
 );

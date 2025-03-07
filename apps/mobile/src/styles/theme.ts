@@ -10,6 +10,7 @@ export interface ThemeColors {
   border: string;
   error: string;
   success: string;
+  warning: string;
   accent: string;
   highlight: string;
 }
@@ -24,6 +25,7 @@ export const lightTheme: ThemeColors = {
   border: '#e0e0e0',
   error: '#f44336',
   success: '#4caf50',
+  warning: '#FFC107',
   accent: '#FF9800',
   highlight: '#E1F5FE',
 };
@@ -38,6 +40,7 @@ export const darkTheme: ThemeColors = {
   border: '#333333',
   error: '#ef5350',
   success: '#66BB6A',
+  warning: '#FFB300',
   accent: '#FFB74D',
   highlight: '#263238',
 };

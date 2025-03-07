@@ -13,7 +13,23 @@ const prisma = new PrismaClient();
 const LICHESS_API_BASE_URL = 'https://lichess.org/api/puzzle';
 const BATCH_SIZE = 5; // Number of puzzles to fetch in parallel
 const DELAY_BETWEEN_BATCHES = 2000; // 2 seconds between batches to respect rate limits
-const COLLECTION_PATH = 'INSERT_PATH_HERE';
+const COLLECTION_PATH = '../apps/mobile/assets/puzzles/default-collection.json';
+
+// Create a map to store puzzle themes
+const puzzleThemeMap = new Map<string, string>();
+
+/**
+ * Builds a map of puzzle IDs to their themes from the collection
+ * @param collectionData The puzzle collection data
+ */
+function buildPuzzleThemeMap(collectionData: Record<string, string[]>) {
+    Object.entries(collectionData).forEach(([theme, puzzleIds]) => {
+        puzzleIds.forEach(id => {
+            puzzleThemeMap.set(id, theme);
+        });
+    });
+    console.log(`Built theme map for ${puzzleThemeMap.size} puzzles`);
+}
 
 /**
  * Fetches a puzzle from Lichess API
@@ -40,6 +56,13 @@ async function savePuzzleToDatabase(puzzleData: any) {
     try {
         const id = puzzleData.puzzle.id;
         
+        // Get the theme for this puzzle
+        const theme = puzzleThemeMap.get(id);
+        if (!theme) {
+            console.error(`No theme found for puzzle ${id}`);
+            return null;
+        }
+        
         // Check if puzzle already exists
         const existingPuzzle = await prisma.lichessPuzzleCache.findUnique({
             where: { lichess_puzzle_id: id }
@@ -56,11 +79,12 @@ async function savePuzzleToDatabase(puzzleData: any) {
                 lichess_puzzle_id: id,
                 pgn: puzzleData.game.pgn,
                 initial_ply: puzzleData.puzzle.initialPly,
-                solution: puzzleData.puzzle.solution
+                solution: puzzleData.puzzle.solution,
+                theme: theme
             }
         });
         
-        console.log(`Saved puzzle ${id} to database`);
+        console.log(`Saved puzzle ${id} to database with theme ${theme}`);
         return savedPuzzle;
     } catch (error: any) {
         console.error(`Error saving puzzle to database:`, error);
@@ -121,6 +145,9 @@ async function populateDatabase() {
         
         const collectionData = JSON.parse(fs.readFileSync(COLLECTION_PATH, 'utf8'));
         
+        // Build the theme map first
+        buildPuzzleThemeMap(collectionData);
+        
         // Extract all puzzle IDs from all categories
         const allPuzzleIds: string[] = [];
         Object.values(collectionData).forEach((categoryPuzzles: any) => {
@@ -148,4 +175,4 @@ async function populateDatabase() {
 // Run the population script
 populateDatabase()
     .then(() => console.log('Script execution complete'))
-    .catch(error => console.error('Script execution failed:', error)); 
+    .catch(error => console.error('Script execution failed:', error));

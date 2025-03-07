@@ -39,7 +39,7 @@ const OrientableChessBoard: React.FC<OrientableChessBoardProps> = ({
     handleMove,
     createPieceGesture,
     getSquareCoordinates,
-    updateBoardPosition, // ← This is the new function we'll add to the hook
+    updateBoardPosition,
   } = useChessBoard({
     initialFen,
     orientation,

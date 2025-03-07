@@ -3,17 +3,21 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer, Theme } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { MainScreen } from '../screens/MainScreen';
+import { SessionSummaryScreen } from '../screens/SessionSummaryScreen';
 import { useTheme } from '../contexts/ThemeContext';
+import { useAppState } from '../contexts/AppStateContext';
 
 // Define the tab navigator param list
 type TabParamList = {
   Home: undefined;
+  Stats: undefined;
 };
 
 const Tab = createBottomTabNavigator<TabParamList>();
 
 export const AppNavigator: React.FC = () => {
   const { theme, themeMode } = useTheme();
+  const { state } = useAppState();
   const isDark = themeMode === 'dark';
 
   // Create navigation theme based on app theme
@@ -35,7 +39,12 @@ export const AppNavigator: React.FC = () => {
       <Tab.Navigator
         screenOptions={({ route }) => ({
           tabBarIcon: ({ focused, color, size }) => {
-            let iconName = focused ? 'home' : 'home-outline';
+            let iconName;
+            if (route.name === 'Home') {
+              iconName = focused ? 'home' : 'home-outline';
+            } else if (route.name === 'Stats') {
+              iconName = focused ? 'stats-chart' : 'stats-chart-outline';
+            }
             return <Ionicons name={iconName as any} size={size} color={color} />;
           },
           tabBarActiveTintColor: theme.primary,
@@ -62,6 +71,14 @@ export const AppNavigator: React.FC = () => {
             title: 'Chess Woodpecker',
             headerShown: false,
           }} 
+        />
+        <Tab.Screen 
+          name="Stats" 
+          component={SessionSummaryScreen}
+          options={{ 
+            title: 'Session Stats',
+            headerShown: true,
+          }}
         />
       </Tab.Navigator>
     </NavigationContainer>

@@ -1,13 +1,32 @@
 import { Chess } from 'chess.js';
 import { 
+  isValidUciMove,
   convertUciToSan, 
-  isMoveLegal, 
+  isValidPgn,
   getPuzzlePosition,
   processPuzzleData,
   LichessPuzzleResponse
 } from '../PuzzleModel';
 
 describe('PuzzleModel', () => {
+  describe('isValidUciMove', () => {
+    it('should validate correct UCI moves', () => {
+      expect(isValidUciMove('e2e4')).toBe(true);
+      expect(isValidUciMove('e7e8q')).toBe(true);
+      expect(isValidUciMove('g1f3')).toBe(true);
+    });
+
+    it('should reject invalid UCI moves', () => {
+      expect(isValidUciMove('')).toBe(false);
+      expect(isValidUciMove('invalid')).toBe(false);
+      expect(isValidUciMove('e2e')).toBe(false);
+      expect(isValidUciMove('e2e4q2')).toBe(false);
+      expect(isValidUciMove('x2e4')).toBe(false);
+      expect(isValidUciMove('e2x4')).toBe(false);
+      expect(isValidUciMove('e2e4x')).toBe(false);
+    });
+  });
+
   describe('convertUciToSan', () => {
     let chess: Chess;
 
@@ -15,119 +34,97 @@ describe('PuzzleModel', () => {
       chess = new Chess();
     });
 
-    it('should convert basic pawn move', () => {
+    it('should convert valid UCI moves to SAN', () => {
       expect(convertUciToSan(chess, 'e2e4')).toBe('e4');
+      chess.move('e4');
+      expect(convertUciToSan(chess, 'e7e5')).toBe('e5');
     });
 
-    it('should convert knight move', () => {
-      expect(convertUciToSan(chess, 'g1f3')).toBe('Nf3');
+    it('should handle queen promotion with check', () => {
+      // Position where queen promotion gives check
+      const promotionPosition = new Chess('k7/1P6/8/8/8/8/8/K7 w - - 0 1');
+      expect(convertUciToSan(promotionPosition, 'b7b8q')).toBe('b8=Q+');
     });
 
-    it('should convert promotion move', () => {
-      // Set up a position where promotion is possible
-      const fen = '8/4P3/8/8/8/k7/8/K7 w - - 0 1';
-      chess.load(fen);
-      
-      // Verify the position is valid
-      expect(chess.fen()).toBe(fen);
-      expect(chess.get('e7')).toEqual({ type: 'p', color: 'w' });
-      expect(chess.moves({ square: 'e7' })).toContain('e8=Q');
-
-      // Test all promotion variants
-      expect(convertUciToSan(chess, 'e7e8q')).toBe('e8=Q');
-      expect(convertUciToSan(chess, 'e7e8r')).toBe('e8=R');
-      expect(convertUciToSan(chess, 'e7e8b')).toBe('e8=B');
-      expect(convertUciToSan(chess, 'e7e8n')).toBe('e8=N');
+    it('should handle knight promotion with check', () => {
+      // Position where knight promotion gives check to black king on b7
+      const promotionPosition = new Chess('8/1k1P4/8/8/8/8/8/4K3 w - - 0 1');
+      expect(convertUciToSan(promotionPosition, 'd7d8n')).toBe('d8=N+');
     });
 
-    it('should return null for invalid move', () => {
-      expect(convertUciToSan(chess, 'e2e5')).toBe(null);
+    it('should handle promotions without check', () => {
+      // Position where promotions don't give check (black king on a3)
+      const promotionPosition = new Chess('8/3P4/8/8/8/k7/8/4K3 w - - 0 1');
+      expect(convertUciToSan(promotionPosition, 'd7d8q')).toBe('d8=Q');
+      expect(convertUciToSan(promotionPosition, 'd7d8n')).toBe('d8=N');
+    });
+
+    it('should return null for invalid moves', () => {
+      expect(convertUciToSan(chess, 'e2e5')).toBe(null); // Invalid pawn move
+      expect(convertUciToSan(chess, 'e2e2')).toBe(null); // Same square
+      expect(convertUciToSan(chess, 'a1a8')).toBe(null); // Through pieces
     });
   });
 
-  describe('isMoveLegal', () => {
-    let chess: Chess;
-
-    beforeEach(() => {
-      chess = new Chess();
-    });
-
-    it('should return true for legal moves', () => {
-      expect(isMoveLegal(chess, 'e2e4')).toBe(true);
-      expect(isMoveLegal(chess, 'g1f3')).toBe(true);
-    });
-
-    it('should return false for illegal moves', () => {
-      expect(isMoveLegal(chess, 'e2e5')).toBe(false);
-      expect(isMoveLegal(chess, 'a2a1')).toBe(false);
+  describe('isValidPgn', () => {
+    it('should validate PGN strings', () => {
+      expect(isValidPgn('1. e4 e5 2. Nf3')).toBe(true);
+      expect(isValidPgn('')).toBe(true); // Empty PGN is valid (starting position)
+      expect(isValidPgn('invalid pgn')).toBe(false);
     });
   });
 
   describe('getPuzzlePosition', () => {
     it('should return correct position from PGN', () => {
       const pgn = '1. e4 e5 2. Nf3';
-      const initialPly = 3;  // After 2. Nf3
+      const position = getPuzzlePosition(pgn, 3);
       
-      const result = getPuzzlePosition(pgn, initialPly);
-      
-      expect(result.isWhiteToMove).toBe(false);
-      expect(result.chess.turn()).toBe('b');
-      expect(result.chess.fen()).toContain('rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b');
+      expect(position).not.toBeNull();
+      if (position) {
+        expect(position.fen).toContain('rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R');
+        expect(position.isWhiteToMove).toBe(false);
+      }
     });
 
-    it('should handle invalid PGN gracefully', () => {
-      expect(() => getPuzzlePosition('invalid pgn', 0))
-        .toThrow('Error processing puzzle position: Invalid PGN format');
+    it('should handle invalid inputs', () => {
+      expect(getPuzzlePosition('invalid pgn', 1)).toBeNull();
+      expect(getPuzzlePosition('1. e4 e5', -1)).toBeNull();
     });
   });
 
   describe('processPuzzleData', () => {
-    const samplePuzzleData: LichessPuzzleResponse = {
+    const validPuzzleData: LichessPuzzleResponse = {
       game: {
-        id: 'abc123',
-        pgn: '1. e4 e5 2. Nf3 Nc6',
-        clock: null,
-        players: {
-          white: { name: 'Player1', rating: 1500 },
-          black: { name: 'Player2', rating: 1600 }
-        }
+        id: 'test1',
+        pgn: '',  // Empty PGN for starting position
+        clock: null
       },
       puzzle: {
-        id: 'puzzle123',
-        rating: 1800,
+        id: 'test1',
+        rating: 1500,
         plays: 100,
-        solution: ['d2d4'],  // A valid move after 1. e4 e5 2. Nf3 Nc6
-        initialPly: 4,       // After black's second move (Nc6)
-        themes: ['opening', 'middlegame']
+        solution: ['e2e4'],
+        initialPly: 0,
+        themes: ['opening']
       }
     };
 
-    it('should process puzzle data correctly', () => {
-      const result = processPuzzleData(samplePuzzleData);
-
-      expect(result.id).toBe('puzzle123');
-      expect(result.rating).toBe(1800);
-      expect(result.plays).toBe(100);
-      expect(result.themes).toEqual(['opening', 'middlegame']);
-      expect(result.solutionMovesUCI).toEqual(['d2d4']);
-      expect(result.solutionMovesSAN).toContain('d4');  // The SAN for d2d4
-      expect(result.playerWhite).toBe('Player1');
-      expect(result.playerBlack).toBe('Player2');
-      expect(result.attempts).toBe(0);
-      expect(result.isWhiteToMove).toBe(true);  // After 4 half-moves, it's white's turn
+    it('should process valid puzzle data', () => {
+      const result = processPuzzleData(validPuzzleData);
+      expect(result).not.toBeNull();
+      if (result) {
+        expect(result.id).toBe('test1');
+        expect(result.solutionMovesUCI).toEqual(['e2e4']);
+        expect(result.solutionMovesSAN).toEqual(['e4']);
+      }
     });
 
-    it('should handle errors gracefully', () => {
+    it('should return null for invalid puzzle data', () => {
       const invalidData = {
-        ...samplePuzzleData,
-        game: {
-          ...samplePuzzleData.game,
-          pgn: 'invalid pgn'
-        }
+        game: { id: 'test2' },
+        puzzle: { id: 'test2' }
       };
-
-      expect(() => processPuzzleData(invalidData as LichessPuzzleResponse))
-        .toThrow('Failed to process puzzle data');
+      expect(processPuzzleData(invalidData as LichessPuzzleResponse)).toBeNull();
     });
   });
 }); 

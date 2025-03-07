@@ -13,6 +13,7 @@
        pgn                String
        initial_ply        Int
        solution           String[]
+       theme              String
 
        @@map("lichess_puzzle_cache")
    }
