@@ -3,7 +3,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export interface PuzzleAttempt {
     id: string;
     category: string;
-    rating: number;
     timestamp: number;
 }
 
@@ -61,13 +60,12 @@ export class SessionStats {
         };
     }
 
-    recordPuzzleAttempt(puzzleMetadata: { id: string; category: string; rating: number }, success: boolean): void {
+    recordPuzzleAttempt(puzzleMetadata: { id: string; category: string }, success: boolean): void {
         this.stats.totalPuzzles++;
 
         const attempt: PuzzleAttempt = {
             id: puzzleMetadata.id,
             category: puzzleMetadata.category,
-            rating: puzzleMetadata.rating,
             timestamp: Date.now()
         };
 

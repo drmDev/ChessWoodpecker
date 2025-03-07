@@ -3,6 +3,8 @@ import { extractMoveComponents } from '../utils/chess/PuzzleLogic';
 
 /**
  * Represents the response structure from the Lichess Puzzle API
+ * NOTE: This is only kept for reference. We no longer directly use the Lichess API.
+ * We now use our own backend which returns BackendPuzzleResponse.
  */
 export interface LichessPuzzleResponse {
   game: {
@@ -29,6 +31,17 @@ export interface LichessPuzzleResponse {
 }
 
 /**
+ * Represents the response structure from our backend API
+ */
+export interface BackendPuzzleResponse {
+  lichess_puzzle_id: string;  // Puzzle ID from Lichess
+  pgn: string;                // PGN representation of game up to puzzle position
+  initial_ply: number;        // Number of half-moves before puzzle position
+  solution: string[];         // Solution moves in UCI format
+  theme: string;              // Single theme of the puzzle (from our database)
+}
+
+/**
  * Represents our internal puzzle model with pre-calculated properties
  */
 export interface Puzzle {
@@ -36,6 +49,7 @@ export interface Puzzle {
   id: string;                       // Puzzle ID from Lichess
   pgn: string;                      // Original PGN from Lichess
   fen: string;                      // FEN representation of the puzzle position
+  theme: string;                    // Theme of the puzzle
   
   // Position data
   initialPly: number;               // Ply count from the original game
@@ -80,15 +94,14 @@ export interface PuzzleCollection {
  */
 export function isValidUciMove(uciMove: string): boolean {
     if (!uciMove || typeof uciMove !== 'string') return false;
-    
+
     // Basic UCI move is 4 characters (e.g., "e2e4")
     if (uciMove.length !== 4 && uciMove.length !== 5) return false;
-    
+
     // Check if the squares are valid
     const from = uciMove.substring(0, 2);
     const to = uciMove.substring(2, 4);
-    const promotion = uciMove.length === 5 ? uciMove[4] : undefined;
-    
+
     const isValidSquare = (square: string) => {
         const file = square[0];
         const rank = square[1];
@@ -97,14 +110,17 @@ export function isValidUciMove(uciMove: string): boolean {
             rank >= '1' && rank <= '8'
         );
     };
-    
+
     if (!isValidSquare(from) || !isValidSquare(to)) return false;
-    
+
     // If promotion piece is specified, it must be valid
-    if (promotion && !['q', 'r', 'b', 'n'].includes(promotion.toLowerCase())) {
-        return false;
+    if (uciMove.length === 5) {
+        const piece = uciMove[4].toLowerCase();
+        if (!['q', 'r', 'b', 'n'].includes(piece)) {
+            return false;
+        }
     }
-    
+
     return true;
 }
 
@@ -120,15 +136,20 @@ export function convertUciToSan(chess: Chess, uciMove: string): string | null {
             return null;
         }
 
-        const from = uciMove.substring(0, 2);
-        const to = uciMove.substring(2, 4);
-        const promotion = uciMove.length === 5 ? uciMove[4].toLowerCase() : undefined;
+        // Use the extractMoveComponents utility instead of manual extraction
+        try {
+            const { from, to, promotion } = extractMoveComponents(uciMove);
 
-        // Create a clone to avoid modifying the original position
-        const tempChess = new Chess(chess.fen());
-        
-        const move = tempChess.move({ from, to, promotion });
-        return move ? move.san : null;
+            // Create a clone to avoid modifying the original position
+            const tempChess = new Chess(chess.fen());
+
+            const move = tempChess.move({ from, to, promotion });
+            return move ? move.san : null;
+        } catch (error) {
+            // If extractMoveComponents throws an error, return null
+            console.error('Error extracting move components:', error);
+            return null;
+        }
     } catch (error) {
         console.error('Error in convertUciToSan:', error);
         return null;
@@ -207,19 +228,35 @@ export function getPuzzlePosition(pgn: string, initialPly: number): {
 }
 
 /**
- * Process raw puzzle data from Lichess API into our internal format
- * @param data The raw puzzle data from Lichess API
+ * Process raw puzzle data from our backend into our internal format
+ * @param data The raw puzzle data from our backend API
  * @returns Processed puzzle data or null if invalid
  */
-export function processPuzzleData(data: LichessPuzzleResponse): Puzzle | null {
+export function processPuzzleData(data: BackendPuzzleResponse): Puzzle | null {
     try {
         // Validate required fields
-        if (!data?.game || !data?.puzzle?.solution || !Array.isArray(data.puzzle.solution)) {
+        if (!data?.lichess_puzzle_id || data.solution === undefined || !Array.isArray(data.solution)) {
             return null;
         }
 
-        // Get the puzzle position
-        const position = getPuzzlePosition(data.game.pgn || '', data.puzzle.initialPly);
+        // Handle empty PGN as a special case
+        const pgn = data.pgn || '';
+        const initialPly = data.initial_ply || 0;
+        
+        // Get the puzzle position - special handling for empty PGN
+        let position;
+        if (pgn === '' && initialPly === 0) {
+            // For empty PGN and initialPly 0, use starting position
+            const chess = new Chess();
+            position = {
+                chess,
+                fen: chess.fen(),
+                isWhiteToMove: true
+            };
+        } else {
+            position = getPuzzlePosition(pgn, initialPly);
+        }
+        
         if (!position) {
             return null;
         }
@@ -228,28 +265,32 @@ export function processPuzzleData(data: LichessPuzzleResponse): Puzzle | null {
         const solutionMovesSAN: string[] = [];
         const solutionChess = new Chess(position.fen);
 
-        for (const uciMove of data.puzzle.solution) {
+        for (const uciMove of data.solution) {
             const san = convertUciToSan(solutionChess, uciMove);
             if (!san) {
                 console.warn(`Invalid move in solution: ${uciMove}`);
                 return null; // If any move is invalid, the whole puzzle is invalid
             }
             solutionMovesSAN.push(san);
-            
-            // Update position for next move
-            const from = uciMove.substring(0, 2);
-            const to = uciMove.substring(2, 4);
-            const promotion = uciMove.length === 5 ? uciMove[4] : undefined;
-            solutionChess.move({ from, to, promotion });
+
+            // Update position for next move using extractMoveComponents
+            try {
+                const { from, to, promotion } = extractMoveComponents(uciMove);
+                solutionChess.move({ from, to, promotion });
+            } catch (error) {
+                console.error('Error extracting move components:', error);
+                return null;
+            }
         }
 
         return {
-            id: data.puzzle.id,
-            pgn: data.game.pgn || '',
+            id: data.lichess_puzzle_id,
+            pgn: pgn,
             fen: position.fen,
-            initialPly: data.puzzle.initialPly,
+            theme: data.theme || 'Uncategorized',
+            initialPly: initialPly,
             isWhiteToMove: position.isWhiteToMove,
-            solutionMovesUCI: data.puzzle.solution,
+            solutionMovesUCI: data.solution,
             solutionMovesSAN: solutionMovesSAN,
             attempts: 0  // Initialize attempts to 0 for new puzzles
         };

@@ -34,7 +34,7 @@ const initialState: AppState = {
     theme: 'light'
 };
 
-// Reducer function
+// 
 function appReducer(state: AppState, action: AppAction): AppState {
     switch (action.type) {
         case 'START_SESSION':
@@ -45,14 +45,14 @@ function appReducer(state: AppState, action: AppAction): AppState {
                 currentPuzzle: null,
                 isLoading: false
             };
-            
+
         case 'END_SESSION':
             return {
                 ...state,
                 currentPuzzle: null,
                 isLoading: false
             };
-            
+
         case 'SET_CURRENT_PUZZLE':
             console.log('[AppStateContext] Setting current puzzle:', {
                 id: action.payload.id,
@@ -63,19 +63,22 @@ function appReducer(state: AppState, action: AppAction): AppState {
                 currentPuzzle: action.payload,
                 isLoading: false
             };
-            
+
         case 'SET_LOADING':
             return {
                 ...state,
                 isLoading: action.payload
             };
-            
+
         case 'RECORD_PUZZLE_ATTEMPT':
+            // Extract theme information from the puzzle
+            const puzzleTheme = action.payload.puzzle.theme;
+
+            // Use the theme instead of hardcoded 'Uncategorized'
             state.sessionStats.recordPuzzleAttempt(
                 {
                     id: action.payload.puzzle.id,
-                    category: 'Uncategorized',
-                    rating: 0
+                    category: puzzleTheme
                 },
                 action.payload.success
             );
@@ -83,29 +86,28 @@ function appReducer(state: AppState, action: AppAction): AppState {
                 ...state,
                 sessionStats: state.sessionStats
             };
-            
+
         case 'PAUSE_SESSION':
             state.sessionStats.pauseSession(action.payload);
             return {
                 ...state,
                 currentPuzzle: null
             };
-            
+
         case 'RESUME_SESSION':
             state.sessionStats.resumeSession();
             return state;
-            
+
         case 'TOGGLE_THEME':
             return {
                 ...state,
                 theme: state.theme === 'light' ? 'dark' : 'light'
             };
-            
+
         default:
             return state;
     }
 }
-
 // Provider component
 export function AppStateProvider({ children }: { children: React.ReactNode }) {
     const [state, dispatch] = useReducer(appReducer, initialState);
