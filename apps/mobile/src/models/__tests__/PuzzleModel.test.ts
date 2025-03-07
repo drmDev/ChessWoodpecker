@@ -5,7 +5,7 @@ import {
   isValidPgn,
   getPuzzlePosition,
   processPuzzleData,
-  LichessPuzzleResponse
+  BackendPuzzleResponse
 } from '../PuzzleModel';
 
 describe('PuzzleModel', () => {
@@ -93,38 +93,32 @@ describe('PuzzleModel', () => {
   });
 
   describe('processPuzzleData', () => {
-    const validPuzzleData: LichessPuzzleResponse = {
-      game: {
-        id: 'test1',
-        pgn: '',  // Empty PGN for starting position
-        clock: null
-      },
-      puzzle: {
-        id: 'test1',
-        rating: 1500,
-        plays: 100,
-        solution: ['e2e4'],
-        initialPly: 0,
-        themes: ['opening']
-      }
+    const validPuzzleData: BackendPuzzleResponse = {
+      lichess_puzzle_id: 'test1',
+      pgn: '',  // Empty PGN for starting position
+      initial_ply: 0,
+      solution: ['e2e4'],
+      theme: 'opening'
     };
 
     it('should process valid puzzle data', () => {
+      console.log('Valid puzzle data:', JSON.stringify(validPuzzleData));
       const result = processPuzzleData(validPuzzleData);
+      console.log('Result:', result);
       expect(result).not.toBeNull();
       if (result) {
         expect(result.id).toBe('test1');
         expect(result.solutionMovesUCI).toEqual(['e2e4']);
         expect(result.solutionMovesSAN).toEqual(['e4']);
+        expect(result.theme).toBe('opening');
       }
     });
 
     it('should return null for invalid puzzle data', () => {
       const invalidData = {
-        game: { id: 'test2' },
-        puzzle: { id: 'test2' }
+        lichess_puzzle_id: 'test2'
       };
-      expect(processPuzzleData(invalidData as LichessPuzzleResponse)).toBeNull();
+      expect(processPuzzleData(invalidData as any)).toBeNull();
     });
   });
 }); 

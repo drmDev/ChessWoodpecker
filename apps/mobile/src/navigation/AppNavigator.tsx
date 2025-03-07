@@ -6,6 +6,7 @@ import { MainScreen } from '../screens/MainScreen';
 import { SessionSummaryScreen } from '../screens/SessionSummaryScreen';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAppState } from '../contexts/AppStateContext';
+import { TouchableOpacity } from 'react-native';
 
 // Define the tab navigator param list
 type TabParamList = {
@@ -64,23 +65,32 @@ export const AppNavigator: React.FC = () => {
           },
         })}
       >
-        <Tab.Screen 
-          name="Home" 
-          component={MainScreen} 
-          options={{ 
+        <Tab.Screen
+          name="Home"
+          component={MainScreen}
+          options={{
             title: 'Chess Woodpecker',
             headerShown: false,
-          }} 
+          }}
         />
-        <Tab.Screen 
-          name="Stats" 
+        <Tab.Screen
+          name="Stats"
           component={SessionSummaryScreen}
-          options={{ 
+          options={({ navigation }) => ({
             title: 'Session Stats',
             headerShown: true,
-          }}
+            // Add a close button to the header
+            headerRight: () => (
+              <TouchableOpacity
+                style={{ marginRight: 16 }}
+                onPress={() => navigation.navigate('Home')}
+              >
+                <Ionicons name="close" size={24} color={theme.text} />
+              </TouchableOpacity>
+            ),
+          })}
         />
       </Tab.Navigator>
     </NavigationContainer>
   );
-}; 
+};

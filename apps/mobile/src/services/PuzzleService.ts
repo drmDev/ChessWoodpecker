@@ -1,3 +1,7 @@
+// src/services/PuzzleService.ts
+
+// Change from alias import to relative path import
+import { extractMoveComponents } from '../utils/chess/PuzzleLogic';
 import { Puzzle, getPuzzlePosition, convertUciToSan } from '../models/PuzzleModel';
 import { PuzzleCacheService } from './PuzzleCacheService';
 import { Chess } from 'chess.js';
@@ -26,7 +30,7 @@ class PuzzleService {
       Object.values(defaultCollection).forEach(ids => {
         allPuzzleIds.push(...(ids as string[]));
       });
-      
+
       // Select a random puzzle ID
       const randomIndex = Math.floor(Math.random() * allPuzzleIds.length);
       const randomId = allPuzzleIds[randomIndex];
@@ -36,35 +40,46 @@ class PuzzleService {
       if (cachedPuzzle) {
         return cachedPuzzle;
       }
-      
+
       console.log(`[PuzzleService] Cache MISS for puzzle ${randomId}, fetching from backend...`);
-      
+
       // If not in cache, fetch from backend
       const response = await fetch(`${this.baseUrl}/puzzles/${randomId}`);
-      
+
       if (!response.ok) {
         throw new Error(`Backend returned status ${response.status}`);
       }
-      
+
       const data = await response.json();
-      
+
       // Process the puzzle data with only essential information
-      const { fen, isWhiteToMove } = getPuzzlePosition(data.pgn, data.initial_ply);
+      const position = getPuzzlePosition(data.pgn, data.initial_ply);
+
+      // Add null check for position
+      if (!position) {
+        throw new Error('Failed to get puzzle position');
+      }
+
+      const { fen, isWhiteToMove } = position;
       const chess = new Chess(fen);
-      
+
       const puzzle: Puzzle = {
         id: data.lichess_puzzle_id,
         pgn: data.pgn,
         initialPly: data.initial_ply,
+        theme: data.theme || 'Uncategorized',
         solutionMovesUCI: data.solution,
         solutionMovesSAN: data.solution.map((move: string) => {
           const san = convertUciToSan(chess, move);
           if (san) {
             // Make the move to update position for next conversion
-            const from = move.substring(0, 2);
-            const to = move.substring(2, 4);
-            const promotion = move.length === 5 ? move[4] : undefined;
-            chess.move({ from, to, promotion });
+            // Use extractMoveComponents here
+            try {
+              const { from, to, promotion } = extractMoveComponents(move);
+              chess.move({ from, to, promotion });
+            } catch (error) {
+              console.error('Error extracting move components:', error);
+            }
           }
           return san || move; // Fallback to UCI if conversion fails
         }),
@@ -77,7 +92,7 @@ class PuzzleService {
       // Store in cache
       await PuzzleCacheService.storePuzzle(puzzle);
       console.log(`[PuzzleService] Stored puzzle ${randomId} in cache`);
-      
+
       return puzzle;
     } catch (error: any) {
       console.error('[PuzzleService] Error fetching random puzzle:', error);
@@ -100,4 +115,4 @@ class PuzzleService {
   }
 }
 
-export const puzzleService = new PuzzleService(); 
+export const puzzleService = new PuzzleService();

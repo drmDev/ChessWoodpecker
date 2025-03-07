@@ -36,10 +36,7 @@ describe('PuzzleService', () => {
     solutionMovesSAN: ['d4', 'dxe4'],
     fen: 'rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2',
     isWhiteToMove: true,
-    attempts: 0,
-    rating: 0,
-    plays: 0,
-    themes: []
+    attempts: 0
   };
 
   beforeEach(() => {
