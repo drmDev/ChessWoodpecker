@@ -26,7 +26,6 @@ export function validatePuzzleMove(
   solutionMoves: string[],
   currentMoveIndex: number
 ): PuzzleValidationResult {
-  // First check if the move is legal in the current position
   try {
     // Clone the position to avoid modifying the original
     const testPosition = new Chess(position.fen());
@@ -51,7 +50,7 @@ export function validatePuzzleMove(
     // Get the expected move at this position
     const expectedMove = solutionMoves[currentMoveIndex];
     
-    // If moves don't match, move is invalid
+    // Compare the full move, including promotion piece if present
     if (userMoveUCI !== expectedMove) {
       return {
         isValid: false,
@@ -68,8 +67,9 @@ export function validatePuzzleMove(
       isComplete: isLastMove,
       nextMove: isLastMove ? null : solutionMoves[currentMoveIndex + 1]
     };
-  } catch (_) {
+  } catch (error) {
     // If any chess.js operations fail, consider the move invalid
+    console.error('Chess.js operation failed:', error);
     return {
       isValid: false,
       isComplete: false,
@@ -84,8 +84,11 @@ export function validatePuzzleMove(
  * @returns UCI format string (e.g., "e2e4" or "e7e8q")
  */
 export function moveToUCI(move: UserMove): string {
-  const { from, to, promotion } = move;
-  return from + to + (promotion ? promotion.toLowerCase() : '');
+  let uci = move.from + move.to;
+  if (move.promotion) {
+    uci += move.promotion;
+  }
+  return uci;
 }
 
 /**

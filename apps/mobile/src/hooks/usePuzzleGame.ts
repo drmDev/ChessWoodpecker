@@ -194,11 +194,9 @@ export function usePuzzleGame(
 
     // Validate the move
     const shouldPromote = isPromotionMove(chessInstance, from, to);
-    const moveToValidate = shouldPromote ? `${to}q` : to;
-
     const result = validatePuzzleMove(
       chessInstance,
-      { from, to: moveToValidate },
+      { from, to, promotion: shouldPromote ? 'q' : undefined },
       puzzle.solutionMovesUCI,
       currentMoveIndex
     );

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity, TextInput } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAppState } from '../contexts/AppStateContext';
+import { useNavigation } from '@react-navigation/native';
 import OrientableChessBoard from '../components/chess/mobile/OrientableChessBoard';
 import { TurnIndicator } from '../components/chess/mobile/TurnIndicator';
 import { usePuzzleGame } from '../hooks/usePuzzleGame';
@@ -10,6 +11,7 @@ import { LoadingOverlay } from '../components/shared/LoadingOverlay';
 import { SessionStatusBar } from '../components/session/SessionStatusBar';
 import { puzzleService } from '../services/PuzzleService';
 import { playSound, SoundTypes } from '../utils/sounds';
+import { Puzzle } from '../models/PuzzleModel';
 
 export const MainScreen: React.FC = () => {
     const { theme } = useTheme();
@@ -17,6 +19,8 @@ export const MainScreen: React.FC = () => {
     const [isPuzzleSetupComplete, setIsPuzzleSetupComplete] = useState(false);
     const [isTransitioningToPuzzle, setIsTransitioningToPuzzle] = useState(false);
     const [_, setIsInteractingWithBoard] = useState(false);
+    const [showDebugPanel, setShowDebugPanel] = useState(false);
+    const [debugPuzzleId, setDebugPuzzleId] = useState('');
     
     const isSessionActive = state.isSessionActive && state.currentPuzzle !== null;
     
@@ -43,7 +47,7 @@ export const MainScreen: React.FC = () => {
 
     const { 
         currentPosition, 
-        handleMove, 
+        handleMove,
         isOpponentMoving,
         isAutoSolving
     } = usePuzzleGame(handleFetchNewPuzzle);
@@ -113,6 +117,37 @@ export const MainScreen: React.FC = () => {
         dispatch({ type: 'RESUME_SESSION' });
     };
 
+    // Load a specific puzzle for debugging
+    const loadSpecificPuzzle = async () => {
+        try {
+            setIsTransitioningToPuzzle(true);
+            setIsPuzzleSetupComplete(false);
+            
+            dispatch({ type: 'SET_LOADING', payload: true });
+
+            // For now using hardcoded puzzle data structure
+            // TODO: Replace with actual API call
+            const puzzleData = {
+                id: debugPuzzleId,
+                pgn: 'e4 e5 Nf3 d6 Nc3 Bd7 Bc4 h6 d3 Nc6 Be3 a6 Qd2 Nf6 O-O-O Na5 h3 Be7 g4 Nxc4 dxc4 Nh7 Nd5 b5 Nxe7 Qxe7 Qd5 O-O Qb7 bxc4 Qxc7 Rfd8 Rxd6 Nf6 Rdd1 Nxe4 Nxe5 Rac8 Qb7 Qxe5 Rxd7 Rb8 Rxd8+ Rxd8 Qxa6 Nxf2 Bxf2 Qf4+ Kb1 Qxf2 Qxc4 Rd2 Rf1 Qa7 Qc8+ Kh7 Qf5+ Kg8 a3 Qe7 Qf4 Rd6 Qb4 Qd7 Qb8+ Kh7 Qb3 Re6 Qd3+ Qxd3 cxd3 Re3 Rd1 Rxh3 b4 Rg3 b5 Rxg4 b6 Rg6 a4 Rxb6+ Ka2 f5 Ka3 f4 a5 Rf6 Ka4 f3 Rf1 g5 Kb5 g4 a6 g3 a7 Rf8',
+                fen: '5r2/P6k/7p/1K6/8/3P1pp1/8/5R2 w - - 1 50',
+                theme: 'promotion',
+                initialPly: 97,
+                isWhiteToMove: true,
+                solutionMovesUCI: ['f1f3', 'f8f3', 'a7a8q'],
+                solutionMovesSAN: ['Rxf3', 'Rxf3', 'a8=Q'],
+                attempts: 0,
+                rating: 1500
+            } as Puzzle;
+
+            dispatch({ type: 'SET_CURRENT_PUZZLE', payload: puzzleData });
+        } catch (error) {
+            console.error('Failed to load specific puzzle:', error);
+        } finally {
+            dispatch({ type: 'SET_LOADING', payload: false });
+        }
+    };
+
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
             <ErrorBoundary>
@@ -139,11 +174,43 @@ export const MainScreen: React.FC = () => {
                     )}
                     
                     {!isSessionActive && (
-                        <View style={[styles.welcomeContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-                            <Text style={[styles.welcomeTitle, { color: theme.text }]}>Welcome to Chess Woodpecker</Text>
-                            <Text style={[styles.welcomeText, { color: theme.textSecondary }]}>
-                                Click "Start Session" below to begin practicing chess puzzles.
+                        <TouchableOpacity
+                            style={[styles.welcomeContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}
+                            onLongPress={() => setShowDebugPanel(!showDebugPanel)}
+                            delayLongPress={1000}
+                        >
+                            <Text style={[styles.welcomeTitle, { color: theme.text }]}>
+                                Welcome to Chess Woodpecker
                             </Text>
+                            <Text style={[styles.welcomeText, { color: theme.textSecondary }]}>
+                                Start a new session to begin your training.
+                                Each session will present you with a series of chess puzzles to solve.
+                            </Text>
+                        </TouchableOpacity>
+                    )}
+                    
+                    {showDebugPanel && (
+                        <View style={[styles.debugPanel, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                            <Text style={[styles.debugTitle, { color: theme.text }]}>Debug Panel</Text>
+                            <View style={styles.debugInputContainer}>
+                                <TextInput
+                                    style={[styles.debugInput, { 
+                                        borderColor: theme.border,
+                                        color: theme.text,
+                                        backgroundColor: theme.background
+                                    }]}
+                                    value={debugPuzzleId}
+                                    onChangeText={setDebugPuzzleId}
+                                    placeholder="Enter puzzle ID"
+                                    placeholderTextColor={theme.textSecondary}
+                                />
+                                <TouchableOpacity 
+                                    style={[styles.debugButton, { backgroundColor: theme.primary }]}
+                                    onPress={loadSpecificPuzzle}
+                                >
+                                    <Text style={styles.debugButtonText}>Load Puzzle</Text>
+                                </TouchableOpacity>
+                            </View>
                         </View>
                     )}
                     
@@ -230,5 +297,37 @@ const styles = StyleSheet.create({
         fontSize: 24,
         fontWeight: 'bold',
         marginBottom: 12,
+    },
+    debugButton: {
+        alignItems: 'center',
+        borderRadius: 4,
+        marginLeft: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+    },
+    debugButtonText: {
+        color: 'white',
+        fontSize: 14,
+        fontWeight: 'bold',
+    },
+    debugInput: {
+        borderRadius: 4,
+        borderWidth: 1,
+        flex: 1,
+        padding: 8,
+    },
+    debugInputContainer: {
+        flexDirection: 'row',
+        marginTop: 8,
+    },
+    debugPanel: {
+        borderRadius: 8,
+        borderWidth: 1,
+        margin: 16,
+        padding: 16,
+    },
+    debugTitle: {
+        fontSize: 16,
+        fontWeight: 'bold',
     },
 });
