@@ -183,7 +183,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
                 isLoading: action.payload
             };
             
-        case 'RECORD_SUCCESSFUL_PUZZLE':
+        case 'RECORD_SUCCESSFUL_PUZZLE': {
             // console.log('[AppStateContext] Recording successful puzzle:', action.payload.id);
             // Only record if session is active
             if (!state.session.isActive) return state;
@@ -212,8 +212,9 @@ function appReducer(state: AppState, action: AppAction): AppState {
                     )
                 }
             };
+        }
             
-        case 'RECORD_FAILED_PUZZLE':
+        case 'RECORD_FAILED_PUZZLE': {
             // console.log('[AppStateContext] Recording failed puzzle:', action.payload.id);
             // Only record if session is active
             if (!state.session.isActive) return state;
@@ -242,6 +243,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
                     )
                 }
             };
+        }
             
         case 'UPDATE_ELAPSED_TIME':
             return {

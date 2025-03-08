@@ -34,10 +34,14 @@ module.exports = [
         // Browser globals
         fetch: 'readonly',
         setTimeout: 'readonly',
+        clearTimeout: 'readonly',
         clearInterval: 'readonly',
         setInterval: 'readonly',
+        requestAnimationFrame: 'readonly',
+        cancelAnimationFrame: 'readonly',
         // React Native globals
         global: 'readonly',
+        __DEV__: 'readonly',
       },
     },
     settings: {
