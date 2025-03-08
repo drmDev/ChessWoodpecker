@@ -11,6 +11,7 @@ import { TouchableOpacity } from 'react-native';
 type TabParamList = {
   Home: undefined;
   Stats: undefined;
+  TestBoard: undefined;
 };
 
 const Tab = createBottomTabNavigator<TabParamList>();
@@ -44,6 +45,8 @@ export const AppNavigator: React.FC = () => {
               iconName = focused ? 'home' : 'home-outline';
             } else if (route.name === 'Stats') {
               iconName = focused ? 'stats-chart' : 'stats-chart-outline';
+            } else if (route.name === 'TestBoard') {
+              iconName = focused ? 'test-analysis' : 'test-analysis-outline';
             }
             return <Ionicons name={iconName as any} size={size} color={color} />;
           },

@@ -175,5 +175,28 @@ describe('PuzzleMoveValidator', () => {
       const qSideCastle = validatePuzzleMove(position, { from: 'e1', to: 'c1' }, ['e1c1'], 0);
       expect(qSideCastle.isValid).toBe(true);
     });
+
+    // Test Case 12: Required promotion move in solution
+    it('should validate promotion move when required by solution', () => {
+      // Position where white must promote pawn to queen
+      const position = new Chess('8/4P3/8/8/8/k7/8/K7 w - - 0 1');
+      const solutionMoves = ['e7e8q']; // Solution requires queen promotion
+      
+      // Test with correct promotion
+      const correctMove = { from: 'e7', to: 'e8', promotion: 'q' };
+      const correctResult = validatePuzzleMove(position, correctMove, solutionMoves, 0);
+      expect(correctResult.isValid).toBe(true);
+      expect(correctResult.isComplete).toBe(true);
+      
+      // Test with wrong promotion piece
+      const wrongPieceMove = { from: 'e7', to: 'e8', promotion: 'r' };
+      const wrongPieceResult = validatePuzzleMove(position, wrongPieceMove, solutionMoves, 0);
+      expect(wrongPieceResult.isValid).toBe(false);
+      
+      // Test with missing promotion
+      const missingPromotionMove = { from: 'e7', to: 'e8' };
+      const missingPromotionResult = validatePuzzleMove(position, missingPromotionMove, solutionMoves, 0);
+      expect(missingPromotionResult.isValid).toBe(false);
+    });
   });
 }); 
