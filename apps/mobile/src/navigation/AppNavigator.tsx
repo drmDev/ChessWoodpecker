@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer, Theme } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,8 +18,8 @@ const Tab = createBottomTabNavigator<TabParamList>();
 
 export const AppNavigator: React.FC = () => {
   const { theme, themeMode } = useTheme();
-  const { state } = useAppState();
   const isDark = themeMode === 'dark';
+  const navigationRef = useRef<any>(null);
 
   // Create navigation theme based on app theme
   const navigationTheme: Theme = {
@@ -36,7 +36,7 @@ export const AppNavigator: React.FC = () => {
   };
 
   return (
-    <NavigationContainer theme={navigationTheme}>
+    <NavigationContainer theme={navigationTheme} ref={navigationRef}>
       <Tab.Navigator
         screenOptions={({ route }) => ({
           tabBarIcon: ({ focused, color, size }) => {
@@ -83,7 +83,7 @@ export const AppNavigator: React.FC = () => {
             headerRight: () => (
               <TouchableOpacity
                 style={{ marginRight: 16 }}
-                onPress={() => navigation.navigate('Home')}
+                onPress={() => navigation.navigate('Home' as never)}
               >
                 <Ionicons name="close" size={24} color={theme.text} />
               </TouchableOpacity>
