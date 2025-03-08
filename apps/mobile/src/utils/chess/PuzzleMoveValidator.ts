@@ -68,7 +68,7 @@ export function validatePuzzleMove(
       isComplete: isLastMove,
       nextMove: isLastMove ? null : solutionMoves[currentMoveIndex + 1]
     };
-  } catch (error) {
+  } catch (_) {
     // If any chess.js operations fail, consider the move invalid
     return {
       isValid: false,
@@ -137,7 +137,7 @@ function isLegalMove(chess: Chess, userMove: { from: string; to: string; promoti
     }
     
     return true;
-  } catch (error) {
+  } catch (_) {
     return false;
   }
 }
@@ -156,7 +156,7 @@ export function validateMove(
   const userMoveUCI = `${userMove.from}${userMove.to}${userMove.promotion || ''}`;
   
   // Make the move to get the result
-  const moveResult = chess.move({
+  chess.move({
     from: userMove.from,
     to: userMove.to,
     promotion: userMove.promotion

@@ -98,21 +98,45 @@ export const SessionStatusBar: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  buttonText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
   container: {
-    width: '100%',
     borderBottomWidth: 1,
     marginBottom: 8,
+    width: '100%',
   },
-  mainBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  controlButton: {
     alignItems: 'center',
+    borderRadius: 4,
+    marginHorizontal: 4,
+    minWidth: 70,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  expandButton: {
+    padding: 4,
+  },
+  expandedControls: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
     paddingHorizontal: 16,
     paddingVertical: 8,
   },
-  statusInfo: {
-    flexDirection: 'row',
+  mainBar: {
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  puzzleCountText: {
+    fontSize: 12,
+  },
+  statusInfo: {
+    alignItems: 'center',
+    flexDirection: 'row',
   },
   statusText: {
     fontWeight: 'bold',
@@ -121,29 +145,5 @@ const styles = StyleSheet.create({
   timeText: {
     fontWeight: '500',
     marginRight: 12,
-  },
-  puzzleCountText: {
-    fontSize: 12,
-  },
-  expandButton: {
-    padding: 4,
-  },
-  expandedControls: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-  },
-  controlButton: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 4,
-    marginHorizontal: 4,
-    minWidth: 70,
-    alignItems: 'center',
-  },
-  buttonText: {
-    fontSize: 12,
-    fontWeight: '500',
   },
 }); 

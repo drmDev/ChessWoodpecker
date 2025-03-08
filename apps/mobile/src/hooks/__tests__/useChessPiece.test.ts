@@ -4,7 +4,13 @@ import { Gesture } from 'react-native-gesture-handler';
 
 // Mock react-native-gesture-handler
 jest.mock('react-native-gesture-handler', () => {
-  const createChainableMock = () => {
+  type MockGesture = {
+    onChange: () => MockGesture;
+    onBegin: () => MockGesture;
+    onFinalize: () => MockGesture;
+  };
+
+  const createChainableMock = (): MockGesture => {
     const mock = {
       onChange: () => mock,
       onBegin: () => mock,
@@ -23,13 +29,13 @@ jest.mock('react-native-gesture-handler', () => {
 
 // Mock react-native-reanimated
 jest.mock('react-native-reanimated', () => {
-  const mockSharedValue = (initial: any) => ({
-    value: initial,
+  const mockSharedValue = (_initial: unknown) => ({
+    value: _initial,
   });
 
-  const mockWithSpring = (toValue: number) => toValue;
+  const mockWithSpring = (_toValue: number) => _toValue;
   
-  const mockWithTiming = (toValue: number, config?: any) => toValue;
+  const mockWithTiming = (_toValue: number, _config?: unknown) => _toValue;
 
   const mockAnimatedStyle = () => ({
     transform: [
@@ -55,6 +61,14 @@ jest.mock('react-native-reanimated', () => {
 });
 
 describe('useChessPiece', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   const mockBaseGesture = Gesture.Pan();
 
   it('should initialize with correct animated style', () => {

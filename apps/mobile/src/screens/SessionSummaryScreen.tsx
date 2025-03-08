@@ -1,6 +1,6 @@
 // SessionSummaryScreen.tsx
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, FlatList } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAppState } from '../contexts/AppStateContext';
 import { formatTimeHHMMSS } from '../utils/timeUtils'; // Assuming you have this utility
@@ -171,114 +171,114 @@ export const SessionSummaryScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    placeholderContainer: {
-        margin: 16,
-        padding: 24,
-        borderRadius: 8,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    placeholderText: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        marginBottom: 8,
-    },
-    descriptionText: {
-        fontSize: 14,
-        textAlign: 'center',
-    },
-    statsContainer: {
-        margin: 16,
-        padding: 16,
-        borderRadius: 8,
-    },
-    sectionTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        marginBottom: 16,
-    },
-    statRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginBottom: 8,
-    },
-    statLabel: {
-        fontSize: 16,
-        fontWeight: '500',
-    },
-    statValue: {
-        fontSize: 16,
-        fontWeight: 'bold',
-    },
     categoryContainer: {
+        borderRadius: 8,
         margin: 16,
         padding: 16,
-        borderRadius: 8,
     },
-    categoryRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingVertical: 8,
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(0,0,0,0.1)',
+    categoryFailed: {
+        fontSize: 12,
+        fontWeight: '500',
     },
     categoryName: {
+        flex: 1,
         fontSize: 14,
         fontWeight: '500',
-        flex: 1,
         marginRight: 8,
     },
+    categoryRow: {
+        alignItems: 'center',
+        borderBottomColor: 'rgba(0,0,0,0.1)',
+        borderBottomWidth: 1,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        paddingVertical: 8,
+    },
+    categoryStatLabel: {
+        fontSize: 12,
+        marginRight: 12,
+    },
     categoryStats: {
+        alignItems: 'center',
         flexDirection: 'row',
         flexShrink: 0,
-        alignItems: 'center',
+    },
+    categorySuccess: {
+        fontSize: 12,
+        fontWeight: '500',
+        marginRight: 12,
     },
     categoryTotal: {
         fontSize: 12,
         fontWeight: 'bold',
         marginRight: 4,
     },
-    categoryStatLabel: {
-        fontSize: 12,
-        marginRight: 12,
+    container: {
+        flex: 1,
     },
-    categorySuccess: {
-        fontSize: 12,
-        marginRight: 12,
-        fontWeight: '500',
-    },
-    categoryFailed: {
-        fontSize: 12,
-        fontWeight: '500',
+    descriptionText: {
+        fontSize: 14,
+        textAlign: 'center',
     },
     failedPuzzlesContainer: {
+        borderRadius: 8,
         margin: 16,
         padding: 16,
-        borderRadius: 8,
     },
     hintText: {
         fontSize: 12,
         marginBottom: 16,
     },
-    puzzleRow: {
-        flexDirection: 'row',
+    placeholderContainer: {
         alignItems: 'center',
-        paddingVertical: 8,
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(0,0,0,0.1)',
+        borderRadius: 8,
+        justifyContent: 'center',
+        margin: 16,
+        padding: 24,
+    },
+    placeholderText: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        marginBottom: 8,
     },
     puzzleId: {
+        flexShrink: 0,
         fontSize: 14,
         fontWeight: 'bold',
         marginRight: 16,
-        flexShrink: 0,
+    },
+    puzzleRow: {
+        alignItems: 'center',
+        borderBottomColor: 'rgba(0,0,0,0.1)',
+        borderBottomWidth: 1,
+        flexDirection: 'row',
+        paddingVertical: 8,
     },
     puzzleTheme: {
-        fontSize: 14,
         flex: 1,
+        fontSize: 14,
+    },
+    sectionTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        marginBottom: 16,
+    },
+    statLabel: {
+        fontSize: 16,
+        fontWeight: '500',
+    },
+    statRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 8,
+    },
+    statValue: {
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
+    statsContainer: {
+        borderRadius: 8,
+        margin: 16,
+        padding: 16,
     },
 });

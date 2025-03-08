@@ -1,10 +1,6 @@
 import { StyleSheet } from 'react-native';
 
 export const commonStyles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 16,
-  },
   card: {
     borderRadius: 8,
     borderWidth: 1,
@@ -17,6 +13,13 @@ export const commonStyles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
+  container: {
+    flex: 1,
+    padding: 16,
+  },
+  icon: {
+    marginRight: 8,
+  },
   row: {
     alignItems: 'center',
     flexDirection: 'row',
@@ -25,8 +28,5 @@ export const commonStyles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
-  },
-  icon: {
-    marginRight: 8,
   },
 }); 

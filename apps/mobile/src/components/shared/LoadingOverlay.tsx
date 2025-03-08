@@ -54,8 +54,8 @@ export function LoadingOverlay({ visible, message = 'Loading next puzzle...' }: 
 const styles = StyleSheet.create({
   container: {
     ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
     zIndex: 1000,
   },
   content: {
@@ -64,9 +64,9 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   message: {
-    marginTop: 16,
     fontSize: 16,
     fontWeight: '500',
+    marginTop: 16,
     textAlign: 'center',
   },
 });

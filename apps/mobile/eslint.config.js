@@ -8,6 +8,7 @@ const reactNativePlugin = require('eslint-plugin-react-native');
 module.exports = [
   {
     files: ['**/*.{js,jsx,ts,tsx}'],
+    ignores: ['**/__tests__/**/*', '**/*.test.ts', '**/*.test.tsx', '**/jest.config.js'],
     plugins: {
       '@typescript-eslint': tsPlugin,
       'react': reactPlugin,
@@ -34,10 +35,14 @@ module.exports = [
         // Browser globals
         fetch: 'readonly',
         setTimeout: 'readonly',
+        clearTimeout: 'readonly',
         clearInterval: 'readonly',
         setInterval: 'readonly',
+        requestAnimationFrame: 'readonly',
+        cancelAnimationFrame: 'readonly',
         // React Native globals
         global: 'readonly',
+        __DEV__: 'readonly',
       },
     },
     settings: {
@@ -63,18 +68,29 @@ module.exports = [
       '@typescript-eslint/no-unsafe-function-type': 'warn',
       'react-native/no-inline-styles': 'warn',
       'react-native/no-color-literals': 'warn',
-      'react-native/sort-styles': 'warn',
+      'react-native/sort-styles': 'error',
       'react/no-unescaped-entities': 'warn',
       'no-undef': 'error',
       'no-redeclare': 'error',
       'no-useless-catch': 'warn',
+      'react-hooks/exhaustive-deps': 'warn',
     }
   },
   {
     files: ['**/__tests__/**/*.[jt]s?(x)', '**/?(*.)+(spec|test).[jt]s?(x)'],
+    plugins: {
+      '@typescript-eslint': tsPlugin,
+    },
     languageOptions: {
+      parser: tsParser,
+      parserOptions: {
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+        ecmaFeatures: {
+          jsx: true,
+        },
+      },
       globals: {
-        // Jest globals
         jest: 'readonly',
         describe: 'readonly',
         it: 'readonly',
@@ -82,7 +98,16 @@ module.exports = [
         expect: 'readonly',
         beforeEach: 'readonly',
         afterEach: 'readonly',
+        beforeAll: 'readonly',
+        afterAll: 'readonly',
       },
     },
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-unused-vars': ['warn', { 
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^_',
+      }],
+    }
   },
 ]; 

@@ -5,7 +5,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { MainScreen } from '../screens/MainScreen';
 import { SessionSummaryScreen } from '../screens/SessionSummaryScreen';
 import { useTheme } from '../contexts/ThemeContext';
-import { useAppState } from '../contexts/AppStateContext';
 import { TouchableOpacity } from 'react-native';
 
 // Define the tab navigator param list

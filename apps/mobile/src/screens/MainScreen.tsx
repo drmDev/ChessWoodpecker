@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity, AppState as RNAppState } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAppState } from '../contexts/AppStateContext';
 import OrientableChessBoard from '../components/chess/mobile/OrientableChessBoard';
@@ -10,15 +10,13 @@ import { LoadingOverlay } from '../components/shared/LoadingOverlay';
 import { SessionStatusBar } from '../components/session/SessionStatusBar';
 import { puzzleService } from '../services/PuzzleService';
 import { playSound, SoundTypes } from '../utils/sounds';
-import { useNavigation } from '@react-navigation/native';
 
 export const MainScreen: React.FC = () => {
-    const navigation = useNavigation();
     const { theme } = useTheme();
     const { state, dispatch } = useAppState();
-    const [isInteractingWithBoard, setIsInteractingWithBoard] = useState(false);
     const [isPuzzleSetupComplete, setIsPuzzleSetupComplete] = useState(false);
     const [isTransitioningToPuzzle, setIsTransitioningToPuzzle] = useState(false);
+    const [_, setIsInteractingWithBoard] = useState(false);
     
     const isSessionActive = state.isSessionActive && state.currentPuzzle !== null;
     
@@ -47,10 +45,6 @@ export const MainScreen: React.FC = () => {
         currentPosition, 
         handleMove, 
         isOpponentMoving,
-        makeOpponentMove,
-        onPuzzleComplete,
-        isUserTurn,
-        isGameOver,
         isAutoSolving
     } = usePuzzleGame(handleFetchNewPuzzle);
 
@@ -58,12 +52,12 @@ export const MainScreen: React.FC = () => {
     // 1. During initial session start or between puzzles (isTransitioningToPuzzle)
     // 2. When puzzle is not fully set up yet
     // 3. But only if a session is active
-    const showLoadingOverlay = ((state.isLoading || isTransitioningToPuzzle || !isPuzzleSetupComplete) && state.isSessionActive) && !isAutoSolving;
+    const shouldShowLoadingOverlay = ((state.isLoading || isTransitioningToPuzzle || !isPuzzleSetupComplete) && state.isSessionActive) && !isAutoSolving;
 
     // Determine the appropriate loading message
     const getLoadingMessage = () => {
-        if (isTransitioningToPuzzle) return "Loading next puzzle...";
-        return "Setting up puzzle...";
+        if (isTransitioningToPuzzle) return 'Loading next puzzle...';
+        return 'Setting up puzzle...';
     };
 
     // When currentPosition changes, it means the puzzle is set up
@@ -182,7 +176,7 @@ export const MainScreen: React.FC = () => {
                 
                 {/* Loading overlay for puzzle transitions */}
                 <LoadingOverlay 
-                    visible={showLoadingOverlay} 
+                    visible={shouldShowLoadingOverlay} 
                     message={getLoadingMessage()}
                 />
             </ErrorBoundary>
@@ -191,6 +185,26 @@ export const MainScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+    boardContainer: {
+        alignItems: 'center',
+        padding: 16,
+    },
+    button: {
+        alignItems: 'center',
+        borderRadius: 8,
+        minWidth: 200,
+        paddingHorizontal: 24,
+        paddingVertical: 12,
+    },
+    buttonContainer: {
+        alignItems: 'center',
+        padding: 16,
+    },
+    buttonText: {
+        color: 'white',
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
     container: {
         flex: 1,
     },
@@ -200,41 +214,21 @@ const styles = StyleSheet.create({
     contentContainer: {
         flexGrow: 1,
     },
-    boardContainer: {
-        alignItems: 'center',
-        padding: 16,
-    },
     welcomeContainer: {
-        margin: 16,
-        padding: 24,
+        alignItems: 'center',
         borderRadius: 12,
         borderWidth: 1,
-        alignItems: 'center',
+        margin: 16,
+        padding: 24,
+    },
+    welcomeText: {
+        fontSize: 16,
+        lineHeight: 24,
+        textAlign: 'center',
     },
     welcomeTitle: {
         fontSize: 24,
         fontWeight: 'bold',
         marginBottom: 12,
-    },
-    welcomeText: {
-        fontSize: 16,
-        textAlign: 'center',
-        lineHeight: 24,
-    },
-    buttonContainer: {
-        padding: 16,
-        alignItems: 'center',
-    },
-    button: {
-        paddingVertical: 12,
-        paddingHorizontal: 24,
-        borderRadius: 8,
-        minWidth: 200,
-        alignItems: 'center',
-    },
-    buttonText: {
-        color: 'white',
-        fontSize: 16,
-        fontWeight: 'bold',
     },
 });

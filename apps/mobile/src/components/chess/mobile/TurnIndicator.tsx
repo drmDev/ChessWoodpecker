@@ -20,10 +20,10 @@ export const TurnIndicator: React.FC<TurnIndicatorProps> = ({ isWhiteToMove }) =
 
 const styles = StyleSheet.create({
     container: {
-        padding: 8,
         borderRadius: 8,
         borderWidth: 1,
         marginBottom: 12,
+        padding: 8,
     },
     text: {
         fontSize: 16,

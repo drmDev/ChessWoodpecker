@@ -1,6 +1,5 @@
 // AppStateContext.tsx
 import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react';
-import { AppState as RNAppState } from 'react-native';
 import { Puzzle } from '../models/PuzzleModel';
 
 // Define puzzle attempt record structure
@@ -104,9 +103,6 @@ function updateCategoryCounts(
     return updatedCounts;
 }
 
-// Storage key for persisting session state
-const SESSION_STORAGE_KEY = 'chess_woodpecker_session';
-
 // Reducer function
 function appReducer(state: AppState, action: AppAction): AppState {
     switch (action.type) {
@@ -183,7 +179,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
                 isLoading: action.payload
             };
             
-        case 'RECORD_SUCCESSFUL_PUZZLE':
+        case 'RECORD_SUCCESSFUL_PUZZLE': {
             // console.log('[AppStateContext] Recording successful puzzle:', action.payload.id);
             // Only record if session is active
             if (!state.session.isActive) return state;
@@ -212,8 +208,9 @@ function appReducer(state: AppState, action: AppAction): AppState {
                     )
                 }
             };
+        }
             
-        case 'RECORD_FAILED_PUZZLE':
+        case 'RECORD_FAILED_PUZZLE': {
             // console.log('[AppStateContext] Recording failed puzzle:', action.payload.id);
             // Only record if session is active
             if (!state.session.isActive) return state;
@@ -242,6 +239,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
                     )
                 }
             };
+        }
             
         case 'UPDATE_ELAPSED_TIME':
             return {
@@ -296,19 +294,14 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     
     // Handle app state changes to auto-pause session
     useEffect(() => {
-        const handleAppStateChange = (nextAppState: string) => {
+        const _handleAppStateChange = (nextAppState: string) => {
             if (nextAppState === 'background' && state.isSessionActive && !state.session.isPaused) {
                 // Auto-pause when app goes to background
                 dispatch({ type: 'PAUSE_SESSION' });
             }
         };
         
-        // Subscribe to app state changes
-        // RNAppState.addEventListener('change', handleAppStateChange);
-        
-        // return () => {
-        //     RNAppState.removeEventListener('change', handleAppStateChange);
-        // };
+        // Commented out event listener code
     }, [state.isSessionActive, state.session.isPaused]);
 
     return (

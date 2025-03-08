@@ -31,6 +31,18 @@ afterEach(() => {
 });
 
 describe('PuzzleCacheService', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    // Initialize AsyncStorage mock state
+    (AsyncStorage.getAllKeys as jest.Mock).mockResolvedValue([]);
+    (AsyncStorage.getItem as jest.Mock).mockResolvedValue(null);
+    (AsyncStorage.multiGet as jest.Mock).mockResolvedValue([]);
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
   // Sample puzzle for testing
   const mockPuzzle: Puzzle = {
     id: 'test123',
@@ -43,11 +55,6 @@ describe('PuzzleCacheService', () => {
     solutionMovesSAN: ['Nf3'],
     attempts: 0
   };
-
-  beforeEach(() => {
-    // Clear all mocks before each test
-    jest.clearAllMocks();
-  });
 
   describe('getPuzzle', () => {
     it('should return null when puzzle is not in cache', async () => {
