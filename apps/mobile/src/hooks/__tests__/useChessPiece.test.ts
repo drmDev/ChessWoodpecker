@@ -28,6 +28,8 @@ jest.mock('react-native-reanimated', () => {
   });
 
   const mockWithSpring = (toValue: number) => toValue;
+  
+  const mockWithTiming = (toValue: number, config?: any) => toValue;
 
   const mockAnimatedStyle = () => ({
     transform: [
@@ -40,7 +42,12 @@ jest.mock('react-native-reanimated', () => {
   return {
     useSharedValue: mockSharedValue,
     withSpring: mockWithSpring,
+    withTiming: mockWithTiming,
     useAnimatedStyle: () => mockAnimatedStyle(),
+    Easing: {
+      bezier: () => 'mocked-easing-function',
+      ease: 'mocked-ease-function'
+    },
     default: {
       View: 'Animated.View',
     },

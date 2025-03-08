@@ -2,7 +2,6 @@
 import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react';
 import { AppState as RNAppState } from 'react-native';
 import { Puzzle } from '../models/PuzzleModel';
-import { timerService } from '../services/TimerService';
 
 // Define puzzle attempt record structure
 interface PuzzleAttempt {
@@ -112,7 +111,7 @@ const SESSION_STORAGE_KEY = 'chess_woodpecker_session';
 function appReducer(state: AppState, action: AppAction): AppState {
     switch (action.type) {
         case 'START_SESSION':
-            console.log('[AppStateContext] Starting new session');
+            // console.log('[AppStateContext] Starting new session');
             return {
                 ...state,
                 isSessionActive: true,
@@ -132,7 +131,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
             };
 
         case 'END_SESSION':
-            console.log('[AppStateContext] Ending session');
+            // console.log('[AppStateContext] Ending session');
             return {
                 ...state,
                 isSessionActive: false,
@@ -146,7 +145,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
             };
             
         case 'PAUSE_SESSION':
-            console.log('[AppStateContext] Pausing session');
+            // console.log('[AppStateContext] Pausing session');
             return {
                 ...state,
                 session: {
@@ -157,7 +156,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
             };
             
         case 'RESUME_SESSION':
-            console.log('[AppStateContext] Resuming session');
+            // console.log('[AppStateContext] Resuming session');
             return {
                 ...state,
                 session: {
@@ -168,16 +167,16 @@ function appReducer(state: AppState, action: AppAction): AppState {
             };
 
         case 'SET_CURRENT_PUZZLE':
-            console.log('[AppStateContext] Setting current puzzle:', {
-                id: action.payload.id,
-                fen: action.payload.fen
-            });
+            // console.log('[AppStateContext] Setting current puzzle:', {
+            //     id: action.payload.id,
+            //     fen: action.payload.fen
+            // });
             return {
                 ...state,
                 currentPuzzle: action.payload,
                 isLoading: false
             };
-
+            
         case 'SET_LOADING':
             return {
                 ...state,
@@ -185,7 +184,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
             };
             
         case 'RECORD_SUCCESSFUL_PUZZLE':
-            console.log('[AppStateContext] Recording successful puzzle:', action.payload.id);
+            // console.log('[AppStateContext] Recording successful puzzle:', action.payload.id);
             // Only record if session is active
             if (!state.session.isActive) return state;
             
@@ -215,7 +214,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
             };
             
         case 'RECORD_FAILED_PUZZLE':
-            console.log('[AppStateContext] Recording failed puzzle:', action.payload.id);
+            // console.log('[AppStateContext] Recording failed puzzle:', action.payload.id);
             // Only record if session is active
             if (!state.session.isActive) return state;
             

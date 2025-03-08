@@ -22,7 +22,7 @@ try {
     strict: false, // Disable strict mode to prevent warnings
   });
 } catch (error) {
-  console.warn('Failed to configure Reanimated logger:', error);
+  // Replace console.warn with a silent catch or console.error if needed
 }
 
 // The App component is the main component of the application.

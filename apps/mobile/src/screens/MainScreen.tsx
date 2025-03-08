@@ -9,7 +9,6 @@ import { ErrorBoundary } from '../components/shared/ErrorBoundary';
 import { LoadingOverlay } from '../components/shared/LoadingOverlay';
 import { SessionStatusBar } from '../components/session/SessionStatusBar';
 import { puzzleService } from '../services/PuzzleService';
-import { PuzzleCacheDebug } from '../components/debug/PuzzleCacheDebug';
 import { playSound, SoundTypes } from '../utils/sounds';
 import { useNavigation } from '@react-navigation/native';
 
@@ -123,14 +122,14 @@ export const MainScreen: React.FC = () => {
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
             <ErrorBoundary>
+                {isSessionActive && (
+                    <SessionStatusBar />
+                )}
+                
                 <ScrollView 
-                    style={styles.content} 
                     contentContainerStyle={styles.contentContainer}
-                    scrollEnabled={!isInteractingWithBoard}
+                    style={styles.content}
                 >
-                    {/* Session Status Bar - only shown when session is active */}
-                    {state.isSessionActive && <SessionStatusBar />}
-                    
                     {isSessionActive && state.currentPuzzle && (
                         <View style={styles.boardContainer}>
                             <TurnIndicator isWhiteToMove={state.currentPuzzle.isWhiteToMove} />
@@ -179,8 +178,6 @@ export const MainScreen: React.FC = () => {
                             </>
                         ) : null}
                     </View>
-                    
-                    {__DEV__ && <PuzzleCacheDebug />}
                 </ScrollView>
                 
                 {/* Loading overlay for puzzle transitions */}

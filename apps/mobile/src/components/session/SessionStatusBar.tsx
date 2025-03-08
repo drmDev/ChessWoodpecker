@@ -5,6 +5,7 @@ import { useAppState } from '../../contexts/AppStateContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { formatTimeHHMMSS } from '../../utils/timeUtils';
 import { useNavigation } from '@react-navigation/native';
+import { playSound, SoundTypes } from '../../utils/sounds';
 
 export const SessionStatusBar: React.FC = () => {
   const { state, dispatch } = useAppState();
@@ -32,6 +33,8 @@ export const SessionStatusBar: React.FC = () => {
   };
   
   const handleEndSession = () => {
+    // Play the end session sound
+    playSound(SoundTypes.END_SESSION);
     dispatch({ type: 'END_SESSION' });
     navigation.navigate('Stats' as never);
   };
@@ -49,7 +52,7 @@ export const SessionStatusBar: React.FC = () => {
           <Text style={[styles.timeText, { color: theme.text }]}>
             {formatTimeHHMMSS(session.elapsedTimeMs)}
           </Text>
-          <Text style={[styles.puzzleCountText, { color: theme.textSecondary }]}>
+          <Text style={[styles.puzzleCountText, { color: theme.primary }]}>
             Puzzle {totalPuzzles}/200
           </Text>
         </View>
@@ -67,7 +70,7 @@ export const SessionStatusBar: React.FC = () => {
       {isExpanded && (
         <View style={[styles.expandedControls, { backgroundColor: theme.surface }]}>
           <TouchableOpacity 
-            style={[styles.controlButton, { backgroundColor: session.isPaused ? theme.primary : theme.error }]} 
+            style={[styles.controlButton, { backgroundColor: session.isPaused ? theme.primary : theme.warning }]} 
             onPress={handlePauseResume}
           >
             <Text style={[styles.buttonText, { color: 'white' }]}>

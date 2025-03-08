@@ -45,17 +45,17 @@ interface UseChessBoardResult {
 
 // Animation configurations for smoother movements
 const ANIMATION_CONFIG = {
-  duration: 250,
+  duration: 150,
   easing: Easing.bezier(0.25, 0.1, 0.25, 1), // Cubic bezier for natural movement
 };
 
 const SPRING_CONFIG = {
-  damping: 15,
-  stiffness: 150,
-  mass: 0.6,
-  overshootClamping: false,
-  restDisplacementThreshold: 0.01,
-  restSpeedThreshold: 0.01
+  damping: 30,
+  stiffness: 300,
+  mass: 0.5,
+  overshootClamping: true,
+  restDisplacementThreshold: 0.001,
+  restSpeedThreshold: 0.001
 };
 
 /**
@@ -224,77 +224,67 @@ export function useChessBoard({
 
   // This function handles the move and animation
   const handleMove = useCallback((from: string, to: string) => {
-    try {
-      if (isAnimating.current) {
-        return false;
-      }
+    if (isAnimating.current) return false;
+    isAnimating.current = true;
 
-      const chess = chessRef.current;
+    const chess = chessRef.current;
 
-      // Check if this would be a valid move before attempting it
-      const moves = chess.moves({ verbose: true });
-      const isValidMove = moves.some(
-        move => move.from === from && move.to === to
-      );
+    // Check if this would be a valid move before attempting it
+    const moves = chess.moves({ verbose: true });
+    const isValidMove = moves.some(
+      move => move.from === from && move.to === to
+    );
 
-      if (!isValidMove) {
-        return false;
-      }
-
-      // Get the piece being moved
-      const piece = position[from];
-      if (!piece) return false;
-
-      // Calculate the source and destination coordinates
-      const fromCoords = getSquareCoordinates(from);
-      const toCoords = getSquareCoordinates(to);
-
-      // Mark as animating to prevent multiple moves
-      isAnimating.current = true;
-
-      // Set the animating piece
-      setAnimatingPiece({
-        piece: `${piece.color}-${piece.type}`,
-        fromSquare: from,
-        toSquare: to,
-        fromCoords,
-        toCoords
-      });
-
-      // Create a temporary position that hides the source piece during animation
-      const tempPosition = { ...position };
-      tempPosition[from] = null;
-      setPosition(tempPosition);
-
-      // Set initial animation position and start animation
-      animX.value = fromCoords.x;
-      animY.value = fromCoords.y;
-      animOpacity.value = 1;
-      animScale.value = 1;
-      animElevation.value = 5; // Add elevation for better visual effect
-
-      // Animate to destination with natural movement
-      // Use spring for more natural movement
-      animX.value = withSpring(toCoords.x, SPRING_CONFIG);
-      animY.value = withSpring(toCoords.y, SPRING_CONFIG, (finished) => {
-        if (finished) {
-          // Small bounce effect on arrival
-          animScale.value = withTiming(1.05, { duration: 100 }, () => {
-            animScale.value = withTiming(1, { duration: 100 });
-            animElevation.value = withTiming(1, { duration: 150 });
-            
-            // This is the critical fix - properly handling the callback
-            runOnJS(finalizeMove)(from, to);
-          });
-        }
-      });
-
-      return true;
-    } catch (error) {
-      // Silently handle errors
+    if (!isValidMove) {
       isAnimating.current = false;
       return false;
     }
+
+    // Get the piece being moved
+    const piece = position[from];
+    if (!piece) return false;
+
+    // Calculate the source and destination coordinates
+    const fromCoords = getSquareCoordinates(from);
+    const toCoords = getSquareCoordinates(to);
+
+    // Set the animating piece
+    setAnimatingPiece({
+      piece: `${piece.color}-${piece.type}`,
+      fromSquare: from,
+      toSquare: to,
+      fromCoords,
+      toCoords
+    });
+
+    // Set initial position
+    animX.value = fromCoords.x;
+    animY.value = fromCoords.y;
+    animOpacity.value = 1;
+    animScale.value = 1;
+    animElevation.value = 3; // Reduced elevation for less dramatic effect
+
+    // Use timing animation instead of spring for more predictable, direct movement
+    animX.value = withTiming(toCoords.x, { 
+      duration: ANIMATION_CONFIG.duration,
+      easing: ANIMATION_CONFIG.easing
+    });
+    
+    animY.value = withTiming(toCoords.y, { 
+      duration: ANIMATION_CONFIG.duration,
+      easing: ANIMATION_CONFIG.easing
+    }, (finished) => {
+      if (finished) {
+        // Remove the bounce effect completely
+        animScale.value = 1;
+        animElevation.value = withTiming(1, { duration: 50 });
+        
+        // This is the critical fix - properly handling the callback
+        runOnJS(finalizeMove)(from, to);
+      }
+    });
+
+    return true;
   }, [position, getSquareCoordinates, animX, animY, animOpacity, animScale, animElevation, finalizeMove]);
 
   // Create a gesture handler for chess pieces

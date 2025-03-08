@@ -268,7 +268,7 @@ export function processPuzzleData(data: BackendPuzzleResponse): Puzzle | null {
         for (const uciMove of data.solution) {
             const san = convertUciToSan(solutionChess, uciMove);
             if (!san) {
-                console.warn(`Invalid move in solution: ${uciMove}`);
+                console.error('Invalid move in solution:', uciMove);
                 return null; // If any move is invalid, the whole puzzle is invalid
             }
             solutionMovesSAN.push(san);
