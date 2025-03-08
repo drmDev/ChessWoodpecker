@@ -22,7 +22,6 @@ const TIMING_CONFIG = {
  * Handles drag gestures and visual feedback
  */
 export function useChessPiece({ baseGesture }: UseChessPieceProps): UseChessPieceResult {
-  // Animation values
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
   const scale = useSharedValue(1);

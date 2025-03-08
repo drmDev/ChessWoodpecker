@@ -1,6 +1,5 @@
 // src/services/PuzzleService.ts
 
-// Change from alias import to relative path import
 import { extractMoveComponents } from '../utils/chess/PuzzleLogic';
 import { Puzzle, getPuzzlePosition, convertUciToSan } from '../models/PuzzleModel';
 import { PuzzleCacheService } from './PuzzleCacheService';
@@ -71,7 +70,6 @@ class PuzzleService {
           const san = convertUciToSan(chess, move);
           if (san) {
             // Make the move to update position for next conversion
-            // Use extractMoveComponents here
             try {
               const { from, to, promotion } = extractMoveComponents(move);
               chess.move({ from, to, promotion });
@@ -83,11 +81,9 @@ class PuzzleService {
         }),
         fen,
         isWhiteToMove,
-        // Remove unnecessary fields
         attempts: 0
       };
 
-      // Store in cache
       await PuzzleCacheService.storePuzzle(puzzle);
 
       return puzzle;
@@ -99,7 +95,6 @@ class PuzzleService {
 
   async fetchPuzzleById(id: string): Promise<Puzzle | null> {
     try {
-      // First check cache
       const cachedPuzzle = await PuzzleCacheService.getPuzzle(id);
       if (cachedPuzzle) {
         return cachedPuzzle;

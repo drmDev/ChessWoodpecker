@@ -136,7 +136,6 @@ export function convertUciToSan(chess: Chess, uciMove: string): string | null {
             return null;
         }
 
-        // Use the extractMoveComponents utility instead of manual extraction
         try {
             const { from, to, promotion } = extractMoveComponents(uciMove);
 
@@ -146,7 +145,6 @@ export function convertUciToSan(chess: Chess, uciMove: string): string | null {
             const move = tempChess.move({ from, to, promotion });
             return move ? move.san : null;
         } catch (error) {
-            // If extractMoveComponents throws an error, return null
             console.error('Error extracting move components:', error);
             return null;
         }

@@ -15,7 +15,7 @@ export const MobileChessBoard = () => {
   function calculateBoardSize() {
     const { width, height } = Dimensions.get('window');
     const smallerDimension = Math.min(width, height);
-    return smallerDimension * 0.85;
+    return smallerDimension * 0.85; // 85% of the smaller dimension
   }
 
   // Update board size on dimension changes
@@ -39,7 +39,6 @@ export const MobileChessBoard = () => {
     };
   }, [boardSize]);
 
-  // Function to attempt playing a sound
   const attemptPlaySound = useCallback(async (soundName: 'move' | 'capture' | 'check') => {
     try {
       await playSound(soundName);

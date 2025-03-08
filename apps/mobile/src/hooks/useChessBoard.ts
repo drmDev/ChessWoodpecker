@@ -79,7 +79,6 @@ export function useChessBoard({
   const animScale = useSharedValue(1);
   const animElevation = useSharedValue(1);
 
-  // Function to update board position - this is the new function
   const updateBoardPosition = useCallback((position: { x: number; y: number }) => {
     boardPositionRef.current = position;
   }, []);
@@ -87,7 +86,7 @@ export function useChessBoard({
   // Calculate optimal board size
   function calculateBoardSize() {
     const { width, height } = Dimensions.get('window');
-    const size = Math.min(width, height * 0.8);
+    const size = Math.min(width, height * 0.8); // 80% of the smaller dimension
     return size;
   }
 
@@ -197,6 +196,7 @@ export function useChessBoard({
         updatePositionFromChess();
         setLastMove({ from, to });
         
+        //  TODO; consider messing with the duration to make it more or less noticeable
         // Fade out the animated piece before removing it
         animOpacity.value = withTiming(0, { duration: 150 }, () => {
           runOnJS(setAnimatingPiece)(null);
@@ -213,7 +213,6 @@ export function useChessBoard({
     }
   }, [onMove, updatePositionFromChess, animOpacity]);
 
-  // This function handles the move and animation
   const handleMove = useCallback((from: string, to: string) => {
     if (isAnimating.current) return false;
     isAnimating.current = true;
@@ -253,7 +252,7 @@ export function useChessBoard({
     animY.value = fromCoords.y;
     animOpacity.value = 1;
     animScale.value = 1;
-    animElevation.value = 3; // Reduced elevation for less dramatic effect
+    animElevation.value = 2; // Reduced elevation for less dramatic effect
 
     // Use timing animation instead of spring for more predictable, direct movement
     animX.value = withTiming(toCoords.x, { 
@@ -268,9 +267,7 @@ export function useChessBoard({
       if (finished) {
         // Remove the bounce effect completely
         animScale.value = 1;
-        animElevation.value = withTiming(1, { duration: 50 });
-        
-        // This is the critical fix - properly handling the callback
+        animElevation.value = withTiming(1, { duration: 50 });        
         runOnJS(finalizeMove)(from, to);
       }
     });
@@ -291,7 +288,6 @@ export function useChessBoard({
       .onFinalize((event) => {
         if (draggedPiece) {
           // Use the absolute coordinates and adjust for board position
-          // This is a critical fix - we need to properly calculate the target square
           const boardPosition = boardPositionRef.current;
 
           // Calculate board-relative coordinates

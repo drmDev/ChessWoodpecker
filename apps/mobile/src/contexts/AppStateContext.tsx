@@ -107,7 +107,6 @@ function updateCategoryCounts(
 function appReducer(state: AppState, action: AppAction): AppState {
     switch (action.type) {
         case 'START_SESSION':
-            // console.log('[AppStateContext] Starting new session');
             return {
                 ...state,
                 isSessionActive: true,
@@ -127,7 +126,6 @@ function appReducer(state: AppState, action: AppAction): AppState {
             };
 
         case 'END_SESSION':
-            // console.log('[AppStateContext] Ending session');
             return {
                 ...state,
                 isSessionActive: false,
@@ -141,7 +139,6 @@ function appReducer(state: AppState, action: AppAction): AppState {
             };
             
         case 'PAUSE_SESSION':
-            // console.log('[AppStateContext] Pausing session');
             return {
                 ...state,
                 session: {
@@ -152,7 +149,6 @@ function appReducer(state: AppState, action: AppAction): AppState {
             };
             
         case 'RESUME_SESSION':
-            // console.log('[AppStateContext] Resuming session');
             return {
                 ...state,
                 session: {
@@ -163,10 +159,6 @@ function appReducer(state: AppState, action: AppAction): AppState {
             };
 
         case 'SET_CURRENT_PUZZLE':
-            // console.log('[AppStateContext] Setting current puzzle:', {
-            //     id: action.payload.id,
-            //     fen: action.payload.fen
-            // });
             return {
                 ...state,
                 currentPuzzle: action.payload,
@@ -180,8 +172,6 @@ function appReducer(state: AppState, action: AppAction): AppState {
             };
             
         case 'RECORD_SUCCESSFUL_PUZZLE': {
-            // console.log('[AppStateContext] Recording successful puzzle:', action.payload.id);
-            // Only record if session is active
             if (!state.session.isActive) return state;
             
             const category = action.payload.theme || 'Uncategorized';
@@ -211,8 +201,6 @@ function appReducer(state: AppState, action: AppAction): AppState {
         }
             
         case 'RECORD_FAILED_PUZZLE': {
-            // console.log('[AppStateContext] Recording failed puzzle:', action.payload.id);
-            // Only record if session is active
             if (!state.session.isActive) return state;
             
             const failedCategory = action.payload.theme || 'Uncategorized';
@@ -299,9 +287,7 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 // Auto-pause when app goes to background
                 dispatch({ type: 'PAUSE_SESSION' });
             }
-        };
-        
-        // Commented out event listener code
+        };        
     }, [state.isSessionActive, state.session.isPaused]);
 
     return (

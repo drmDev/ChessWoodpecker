@@ -3,7 +3,7 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAppState } from '../contexts/AppStateContext';
-import { formatTimeHHMMSS } from '../utils/timeUtils'; // Assuming you have this utility
+import { formatTimeHHMMSS } from '../utils/timeUtils';
 
 // Helper function to format category names from SNAKE_CASE to "Pascal Case"
 const formatCategoryName = (category: string): string => {
@@ -26,7 +26,6 @@ export const SessionSummaryScreen: React.FC = () => {
         Linking.openURL(url);
     };
 
-    // Calculate success rate
     const calculateSuccessRate = () => {
         if (session.totalPuzzles === 0) return '0%';
         const rate = (session.successfulPuzzles.length / session.totalPuzzles) * 100;

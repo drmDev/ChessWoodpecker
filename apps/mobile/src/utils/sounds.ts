@@ -1,7 +1,6 @@
 import { Audio } from 'expo-av';
 import { preloadAssets, getAssetUri } from './assetLoader';
 
-// Define sound types using a const object for better type safety
 export const SoundTypes = {
   MOVE: 'move',
   CAPTURE: 'capture',
@@ -14,7 +13,6 @@ export const SoundTypes = {
 
 export type SoundName = typeof SoundTypes[keyof typeof SoundTypes];
 
-// Map of sound names to their require statements
 const soundModules: Record<SoundName, number> = {
   [SoundTypes.MOVE]: require('../../assets/sounds/Move.mp3'),
   [SoundTypes.CAPTURE]: require('../../assets/sounds/Capture.mp3'),
@@ -68,10 +66,7 @@ async function initializeAudio(): Promise<void> {
  */
 export const loadSounds = async (): Promise<void> => {
   try {
-    // Initialize audio system first
-    await initializeAudio();
-    
-    // Preload all sound assets
+    await initializeAudio();    
     const soundAssets = Object.values(soundModules);
     await preloadAssets(soundAssets);
     
@@ -131,8 +126,6 @@ export const playSound = async (name: SoundName): Promise<void> => {
     // Reset position and play
     await sound.setPositionAsync(0);
     await sound.setVolumeAsync(globalVolume);
-
-    // Play the sound
     await sound.playAsync();
 
     // For one-off sounds, unload them after playing

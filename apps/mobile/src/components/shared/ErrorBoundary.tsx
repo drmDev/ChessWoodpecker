@@ -20,7 +20,6 @@ export const ErrorBoundary = React.memo(
     }
 
     componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-      // TODO: Log to error reporting service
       console.error('ErrorBoundary caught an error:', error, errorInfo);
     }
 

@@ -33,7 +33,6 @@ export const SessionStatusBar: React.FC = () => {
   };
   
   const handleEndSession = () => {
-    // Play the end session sound
     playSound(SoundTypes.END_SESSION);
     dispatch({ type: 'END_SESSION' });
     navigation.navigate('Stats' as never);
