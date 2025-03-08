@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity, TextInput } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAppState } from '../contexts/AppStateContext';
-import { useNavigation } from '@react-navigation/native';
 import OrientableChessBoard from '../components/chess/mobile/OrientableChessBoard';
 import { TurnIndicator } from '../components/chess/mobile/TurnIndicator';
 import { usePuzzleGame } from '../hooks/usePuzzleGame';
