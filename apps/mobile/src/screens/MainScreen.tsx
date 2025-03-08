@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity, AppState as RNAppState } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAppState } from '../contexts/AppStateContext';
 import OrientableChessBoard from '../components/chess/mobile/OrientableChessBoard';
@@ -7,11 +7,14 @@ import { TurnIndicator } from '../components/chess/mobile/TurnIndicator';
 import { usePuzzleGame } from '../hooks/usePuzzleGame';
 import { ErrorBoundary } from '../components/shared/ErrorBoundary';
 import { LoadingOverlay } from '../components/shared/LoadingOverlay';
+import { SessionStatusBar } from '../components/session/SessionStatusBar';
 import { puzzleService } from '../services/PuzzleService';
 import { PuzzleCacheDebug } from '../components/debug/PuzzleCacheDebug';
 import { playSound, SoundTypes } from '../utils/sounds';
+import { useNavigation } from '@react-navigation/native';
 
 export const MainScreen: React.FC = () => {
+    const navigation = useNavigation();
     const { theme } = useTheme();
     const { state, dispatch } = useAppState();
     const [isInteractingWithBoard, setIsInteractingWithBoard] = useState(false);
@@ -113,13 +116,8 @@ export const MainScreen: React.FC = () => {
         }
     };
 
-    const handleEndSession = async () => {
-        try {
-            await playSound(SoundTypes.END_SESSION);
-            dispatch({ type: 'END_SESSION' });
-        } catch (error) {
-            console.error('Failed to end session:', error);
-        }
+    const handleResumeSession = () => {
+        dispatch({ type: 'RESUME_SESSION' });
     };
 
     return (
@@ -130,6 +128,9 @@ export const MainScreen: React.FC = () => {
                     contentContainerStyle={styles.contentContainer}
                     scrollEnabled={!isInteractingWithBoard}
                 >
+                    {/* Session Status Bar - only shown when session is active */}
+                    {state.isSessionActive && <SessionStatusBar />}
+                    
                     {isSessionActive && state.currentPuzzle && (
                         <View style={styles.boardContainer}>
                             <TurnIndicator isWhiteToMove={state.currentPuzzle.isWhiteToMove} />
@@ -155,26 +156,31 @@ export const MainScreen: React.FC = () => {
                     
                     <View style={styles.buttonContainer}>
                         {!isSessionActive ? (
-                            <TouchableOpacity 
-                                style={[styles.button, { backgroundColor: theme.primary }]} 
-                                onPress={handleStartSession}
-                                disabled={state.isLoading}
-                            >
-                                <Text style={styles.buttonText}>
-                                    {state.isLoading ? 'Loading...' : 'Start Session'}
-                                </Text>
-                            </TouchableOpacity>
-                        ) : (
-                            <TouchableOpacity 
-                                style={[styles.button, { backgroundColor: theme.error }]} 
-                                onPress={handleEndSession}
-                            >
-                                <Text style={styles.buttonText}>End Session</Text>
-                            </TouchableOpacity>
-                        )}
+                            <>
+                                <TouchableOpacity 
+                                    style={[styles.button, { backgroundColor: theme.primary }]} 
+                                    onPress={handleStartSession}
+                                    disabled={state.isLoading}
+                                >
+                                    <Text style={styles.buttonText}>
+                                        {state.isLoading ? 'Loading...' : 'Start New Session'}
+                                    </Text>
+                                </TouchableOpacity>
+                                
+                                {/* Show Resume button if there's a paused session */}
+                                {state.session.isPaused && (
+                                    <TouchableOpacity 
+                                        style={[styles.button, { backgroundColor: theme.secondary, marginTop: 12 }]} 
+                                        onPress={handleResumeSession}
+                                    >
+                                        <Text style={styles.buttonText}>Resume Session</Text>
+                                    </TouchableOpacity>
+                                )}
+                            </>
+                        ) : null}
                     </View>
                     
-                    <PuzzleCacheDebug />
+                    {__DEV__ && <PuzzleCacheDebug />}
                 </ScrollView>
                 
                 {/* Loading overlay for puzzle transitions */}

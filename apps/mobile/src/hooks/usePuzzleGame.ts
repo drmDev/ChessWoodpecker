@@ -165,28 +165,33 @@ export function usePuzzleGame(onPuzzleComplete: () => void): PuzzleGameState & P
       }
     }
   }, [state.currentPuzzle, chessInstance, makeMove, onPuzzleComplete]);
-  
+
   const handlePuzzleSuccess = useCallback(() => {
-    if (!state.currentPuzzle) return;
+    if (!state.currentPuzzle) {
+      console.log(`[usePuzzleGame] Cannot record success: no current puzzle`);
+      return;
+    }
 
-    // We don't need to track successful puzzles in our simplified approach
-    // but we'll keep this function for symmetry and potential future use
+    // Record the successful puzzle attempt
+    dispatch({
+      type: 'RECORD_SUCCESSFUL_PUZZLE',
+      payload: {
+        id: state.currentPuzzle.id,
+        theme: state.currentPuzzle.theme || 'Uncategorized'
+      }
+    });
 
+    // Complete the puzzle
     onPuzzleComplete();
-  }, [onPuzzleComplete, state.currentPuzzle]);
+  }, [onPuzzleComplete, state.currentPuzzle, dispatch]);
 
-  // CHANGE: Remove onPuzzleComplete call from handlePuzzleFailure
   const handlePuzzleFailure = useCallback(() => {
     if (!state.currentPuzzle) {
       console.log(`[usePuzzleGame] Cannot record failure: no current puzzle`);
       return;
     }
 
-    console.log(`[usePuzzleGame] Recording failed puzzle attempt`, {
-      puzzleId: state.currentPuzzle.id,
-      theme: state.currentPuzzle.theme || 'Uncategorized'
-    });
-
+    // Record the failed puzzle attempt
     dispatch({
       type: 'RECORD_FAILED_PUZZLE',
       payload: {
@@ -194,9 +199,7 @@ export function usePuzzleGame(onPuzzleComplete: () => void): PuzzleGameState & P
         theme: state.currentPuzzle.theme || 'Uncategorized'
       }
     });
-
-    console.log(`[usePuzzleGame] Puzzle failure recorded`);
-  }, [dispatch, state.currentPuzzle]);
+  }, [state.currentPuzzle, dispatch]);
 
   const handleMove = useCallback(async (from: string, to: string) => {
     if (!state.currentPuzzle || isAutoSolving || isOpponentMoving) return;
@@ -313,4 +316,4 @@ export function usePuzzleGame(onPuzzleComplete: () => void): PuzzleGameState & P
     isGameOver: isGameOver(),
     isAutoSolving,
   };
-} 
+}

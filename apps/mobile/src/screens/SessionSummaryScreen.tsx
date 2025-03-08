@@ -1,6 +1,6 @@
 // SessionSummaryScreen.tsx
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, FlatList } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAppState } from '../contexts/AppStateContext';
 import { formatTimeHHMMSS } from '../utils/timeUtils'; // Assuming you have this utility
@@ -21,23 +21,26 @@ export const SessionSummaryScreen: React.FC = () => {
     const { state } = useAppState();
     const { session } = state;
 
-    // State to force re-render every second to update time display
-    const [, setTick] = useState(0);
-
-    // Update the timer display every second
-    useEffect(() => {
-        if (!session.isActive) return;
-
-        const interval = setInterval(() => {
-            setTick(prev => prev + 1);
-        }, 1000);
-
-        return () => clearInterval(interval);
-    }, [session.isActive]);
-
     const openPuzzleLink = (puzzleId: string) => {
         const url = `https://lichess.org/training/${puzzleId}`;
         Linking.openURL(url);
+    };
+
+    // Calculate success rate
+    const calculateSuccessRate = () => {
+        if (session.totalPuzzles === 0) return '0%';
+        const rate = (session.successfulPuzzles.length / session.totalPuzzles) * 100;
+        return `${rate.toFixed(1)}%`;
+    };
+
+    // Get categories sorted by total count
+    const getSortedCategories = () => {
+        return Object.entries(session.categoryCounts)
+            .sort(([, a], [, b]) => b.total - a.total)
+            .map(([category, stats]) => ({
+                category,
+                ...stats
+            }));
     };
 
     return (
@@ -53,30 +56,86 @@ export const SessionSummaryScreen: React.FC = () => {
                 </View>
             ) : (
                 <ScrollView>
+                    {/* Session Statistics */}
                     <View style={[styles.statsContainer, { backgroundColor: theme.surface }]}>
                         <Text style={[styles.sectionTitle, { color: theme.text }]}>
                             Session Statistics
                         </Text>
 
                         <View style={styles.statRow}>
-                            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
+                            <Text style={[styles.statLabel, { color: theme.primary }]}>
                                 Total Time:
                             </Text>
                             <Text style={[styles.statValue, { color: theme.text }]}>
-                                {formatTimeHHMMSS(session.totalTimeMs)}
+                                {formatTimeHHMMSS(session.elapsedTimeMs)}
                             </Text>
                         </View>
 
                         <View style={styles.statRow}>
-                            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
-                                Failed Puzzles:
+                            <Text style={[styles.statLabel, { color: theme.primary }]}>
+                                Total Puzzles:
                             </Text>
                             <Text style={[styles.statValue, { color: theme.text }]}>
+                                {session.totalPuzzles}
+                            </Text>
+                        </View>
+
+                        <View style={styles.statRow}>
+                            <Text style={[styles.statLabel, { color: theme.primary }]}>
+                                Successful Puzzles:
+                            </Text>
+                            <Text style={[styles.statValue, { color: theme.success }]}>
+                                {session.successfulPuzzles.length}
+                            </Text>
+                        </View>
+
+                        <View style={styles.statRow}>
+                            <Text style={[styles.statLabel, { color: theme.primary }]}>
+                                Failed Puzzles:
+                            </Text>
+                            <Text style={[styles.statValue, { color: theme.error }]}>
                                 {session.failedPuzzles.length}
+                            </Text>
+                        </View>
+
+                        <View style={styles.statRow}>
+                            <Text style={[styles.statLabel, { color: theme.primary }]}>
+                                Success Rate:
+                            </Text>
+                            <Text style={[styles.statValue, { color: theme.text }]}>
+                                {calculateSuccessRate()}
                             </Text>
                         </View>
                     </View>
 
+                    {/* Category Statistics */}
+                    {Object.keys(session.categoryCounts).length > 0 && (
+                        <View style={[styles.categoryContainer, { backgroundColor: theme.surface }]}>
+                            <Text style={[styles.sectionTitle, { color: theme.text }]}>
+                                Categories
+                            </Text>
+                            {getSortedCategories().map(item => (
+                                <View key={item.category} style={styles.categoryRow}>
+                                    <Text style={[styles.categoryName, { color: theme.text }]}>
+                                        {formatCategoryName(item.category)}
+                                    </Text>
+                                    <View style={styles.categoryStats}>
+                                        <Text style={[styles.categoryTotal, { color: theme.textSecondary }]}>
+                                            {item.total} total
+                                        </Text>
+                                        <Text style={[styles.categorySuccess, { color: theme.success }]}>
+                                            {item.successful} ✓
+                                        </Text>
+                                        <Text style={[styles.categoryFailed, { color: theme.error }]}>
+                                            {item.failed} ✗
+                                        </Text>
+                                    </View>
+                                </View>
+                            ))}
+                        </View>
+                    )}
+
+                    {/* Failed Puzzles List */}
                     {session.failedPuzzles.length > 0 && (
                         <View style={[styles.failedPuzzlesContainer, { backgroundColor: theme.surface }]}>
                             <Text style={[styles.sectionTitle, { color: theme.text }]}>
@@ -111,72 +170,99 @@ export const SessionSummaryScreen: React.FC = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        padding: 16,
     },
     placeholderContainer: {
+        margin: 16,
         padding: 24,
-        borderRadius: 12,
+        borderRadius: 8,
         alignItems: 'center',
         justifyContent: 'center',
-        marginTop: 40,
     },
     placeholderText: {
-        fontSize: 20,
+        fontSize: 18,
         fontWeight: 'bold',
-        marginBottom: 12,
+        marginBottom: 8,
     },
     descriptionText: {
-        fontSize: 16,
+        fontSize: 14,
         textAlign: 'center',
-        lineHeight: 24,
     },
     statsContainer: {
+        margin: 16,
         padding: 16,
-        borderRadius: 12,
-        marginBottom: 16,
+        borderRadius: 8,
     },
     sectionTitle: {
         fontSize: 18,
         fontWeight: 'bold',
-        marginBottom: 12,
+        marginBottom: 16,
     },
     statRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
+        marginBottom: 8,
+    },
+    statLabel: {
+        fontSize: 16,
+        fontWeight: '500',
+    },
+    statValue: {
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
+    categoryContainer: {
+        margin: 16,
+        padding: 16,
+        borderRadius: 8,
+    },
+    categoryRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
         paddingVertical: 8,
         borderBottomWidth: 1,
         borderBottomColor: 'rgba(0,0,0,0.1)',
     },
-    statLabel: {
-        fontSize: 16,
+    categoryName: {
+        fontSize: 14,
+        fontWeight: '500',
     },
-    statValue: {
-        fontSize: 16,
-        fontWeight: '600',
+    categoryStats: {
+        flexDirection: 'row',
+    },
+    categoryTotal: {
+        fontSize: 12,
+        marginRight: 8,
+    },
+    categorySuccess: {
+        fontSize: 12,
+        marginRight: 8,
+    },
+    categoryFailed: {
+        fontSize: 12,
     },
     failedPuzzlesContainer: {
+        margin: 16,
         padding: 16,
-        borderRadius: 12,
+        borderRadius: 8,
     },
     hintText: {
-        fontSize: 14,
-        fontStyle: 'italic',
-        marginBottom: 8,
+        fontSize: 12,
+        marginBottom: 16,
     },
     puzzleRow: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
-        paddingVertical: 10,
+        paddingVertical: 8,
         borderBottomWidth: 1,
         borderBottomColor: 'rgba(0,0,0,0.1)',
     },
     puzzleId: {
         fontSize: 14,
-        textDecorationLine: 'underline',
+        fontWeight: 'bold',
+        marginRight: 16,
     },
     puzzleTheme: {
         fontSize: 14,
-        textAlign: 'right',
     },
 });

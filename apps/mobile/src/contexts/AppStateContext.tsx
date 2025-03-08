@@ -1,17 +1,35 @@
 // AppStateContext.tsx
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react';
+import { AppState as RNAppState } from 'react-native';
 import { Puzzle } from '../models/PuzzleModel';
 import { timerService } from '../services/TimerService';
+
+// Define puzzle attempt record structure
+interface PuzzleAttempt {
+    id: string;
+    theme: string;
+    rating?: number;
+    timestamp: number;
+    isSuccessful: boolean;
+}
 
 // Define the session state structure
 interface SessionState {
     isActive: boolean;
-    totalTimeMs: number;
-    failedPuzzles: {
-        id: string;
-        theme: string;
-        timestamp: number;
-    }[];
+    isPaused: boolean;
+    startTime: number;
+    elapsedTimeMs: number; // Single source of truth for elapsed time
+    pausedAt: number | null;
+    totalPuzzles: number;
+    successfulPuzzles: PuzzleAttempt[];
+    failedPuzzles: PuzzleAttempt[];
+    categoryCounts: {
+        [category: string]: {
+            total: number;
+            successful: number;
+            failed: number;
+        };
+    };
 }
 
 interface AppState {
@@ -26,10 +44,13 @@ interface AppState {
 type AppAction =
     | { type: 'START_SESSION' }
     | { type: 'END_SESSION' }
+    | { type: 'PAUSE_SESSION' }
+    | { type: 'RESUME_SESSION' }
     | { type: 'SET_CURRENT_PUZZLE'; payload: Puzzle }
     | { type: 'SET_LOADING'; payload: boolean }
-    | { type: 'RECORD_FAILED_PUZZLE'; payload: { id: string; theme: string } }
-    | { type: 'UPDATE_TIME_DELTA'; payload: number }
+    | { type: 'RECORD_SUCCESSFUL_PUZZLE'; payload: { id: string; theme: string; rating?: number } }
+    | { type: 'RECORD_FAILED_PUZZLE'; payload: { id: string; theme: string; rating?: number } }
+    | { type: 'UPDATE_ELAPSED_TIME'; payload: number }
     | { type: 'TOGGLE_THEME' };
 
 // Create context
@@ -46,18 +67,52 @@ const initialState: AppState = {
     isSessionActive: false,
     session: {
         isActive: false,
-        totalTimeMs: 0,
-        failedPuzzles: []
+        isPaused: false,
+        startTime: 0,
+        elapsedTimeMs: 0,
+        pausedAt: null,
+        totalPuzzles: 0,
+        successfulPuzzles: [],
+        failedPuzzles: [],
+        categoryCounts: {}
     }
 };
+
+// Helper function to update category counts
+function updateCategoryCounts(
+    categoryCounts: SessionState['categoryCounts'],
+    category: string,
+    isSuccess: boolean
+): SessionState['categoryCounts'] {
+    const updatedCounts = { ...categoryCounts };
+    
+    if (!updatedCounts[category]) {
+        updatedCounts[category] = {
+            total: 0,
+            successful: 0,
+            failed: 0
+        };
+    }
+    
+    updatedCounts[category].total += 1;
+    
+    if (isSuccess) {
+        updatedCounts[category].successful += 1;
+    } else {
+        updatedCounts[category].failed += 1;
+    }
+    
+    return updatedCounts;
+}
+
+// Storage key for persisting session state
+const SESSION_STORAGE_KEY = 'chess_woodpecker_session';
 
 // Reducer function
 function appReducer(state: AppState, action: AppAction): AppState {
     switch (action.type) {
         case 'START_SESSION':
             console.log('[AppStateContext] Starting new session');
-            // Start the timer service when session starts
-            timerService.start();
             return {
                 ...state,
                 isSessionActive: true,
@@ -65,15 +120,19 @@ function appReducer(state: AppState, action: AppAction): AppState {
                 isLoading: false,
                 session: {
                     isActive: true,
-                    totalTimeMs: 0,
-                    failedPuzzles: []
+                    isPaused: false,
+                    startTime: Date.now(),
+                    elapsedTimeMs: 0,
+                    pausedAt: null,
+                    totalPuzzles: 0,
+                    successfulPuzzles: [],
+                    failedPuzzles: [],
+                    categoryCounts: {}
                 }
             };
 
         case 'END_SESSION':
             console.log('[AppStateContext] Ending session');
-            // Stop the timer service when session ends
-            timerService.stop();
             return {
                 ...state,
                 isSessionActive: false,
@@ -81,7 +140,30 @@ function appReducer(state: AppState, action: AppAction): AppState {
                 isLoading: false,
                 session: {
                     ...state.session,
-                    isActive: false
+                    isActive: false,
+                    isPaused: false
+                }
+            };
+            
+        case 'PAUSE_SESSION':
+            console.log('[AppStateContext] Pausing session');
+            return {
+                ...state,
+                session: {
+                    ...state.session,
+                    isPaused: true,
+                    pausedAt: Date.now()
+                }
+            };
+            
+        case 'RESUME_SESSION':
+            console.log('[AppStateContext] Resuming session');
+            return {
+                ...state,
+                session: {
+                    ...state.session,
+                    isPaused: false,
+                    pausedAt: null
                 }
             };
 
@@ -101,72 +183,143 @@ function appReducer(state: AppState, action: AppAction): AppState {
                 ...state,
                 isLoading: action.payload
             };
-
+            
+        case 'RECORD_SUCCESSFUL_PUZZLE':
+            console.log('[AppStateContext] Recording successful puzzle:', action.payload.id);
+            // Only record if session is active
+            if (!state.session.isActive) return state;
+            
+            const category = action.payload.theme || 'Uncategorized';
+            
+            return {
+                ...state,
+                session: {
+                    ...state.session,
+                    totalPuzzles: state.session.totalPuzzles + 1,
+                    successfulPuzzles: [
+                        ...state.session.successfulPuzzles,
+                        {
+                            id: action.payload.id,
+                            theme: category,
+                            rating: action.payload.rating,
+                            timestamp: Date.now(),
+                            isSuccessful: true
+                        }
+                    ],
+                    categoryCounts: updateCategoryCounts(
+                        state.session.categoryCounts,
+                        category,
+                        true
+                    )
+                }
+            };
+            
         case 'RECORD_FAILED_PUZZLE':
             console.log('[AppStateContext] Recording failed puzzle:', action.payload.id);
             // Only record if session is active
             if (!state.session.isActive) return state;
-
+            
+            const failedCategory = action.payload.theme || 'Uncategorized';
+            
             return {
                 ...state,
                 session: {
                     ...state.session,
+                    totalPuzzles: state.session.totalPuzzles + 1,
                     failedPuzzles: [
                         ...state.session.failedPuzzles,
                         {
                             id: action.payload.id,
-                            theme: action.payload.theme || 'Uncategorized',
-                            timestamp: Date.now()
+                            theme: failedCategory,
+                            rating: action.payload.rating,
+                            timestamp: Date.now(),
+                            isSuccessful: false
                         }
-                    ]
+                    ],
+                    categoryCounts: updateCategoryCounts(
+                        state.session.categoryCounts,
+                        failedCategory,
+                        false
+                    )
                 }
             };
-
-        case 'UPDATE_TIME_DELTA':
-            // Only update time if session is active
-            if (!state.session.isActive) return state;
-
+            
+        case 'UPDATE_ELAPSED_TIME':
             return {
                 ...state,
                 session: {
                     ...state.session,
-                    totalTimeMs: state.session.totalTimeMs + action.payload
+                    elapsedTimeMs: action.payload
                 }
             };
-
+            
         case 'TOGGLE_THEME':
             return {
                 ...state,
                 theme: state.theme === 'light' ? 'dark' : 'light'
             };
-
+            
         default:
             return state;
     }
 }
 
 // Provider component
-export function AppStateProvider({ children }: { children: React.ReactNode }) {
+export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [state, dispatch] = useReducer(appReducer, initialState);
-
-    // Set up timer service with the dispatch function
+    const timerRef = useRef<NodeJS.Timeout | null>(null);
+    
+    // Single timer to update elapsed time
     useEffect(() => {
-        timerService.setDispatch(dispatch);
-
-        // Clean up timer service on unmount
+        // Clear any existing timer
+        if (timerRef.current) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
+        }
+        
+        // Only run timer if session is active
+        if (state.session.isActive && !state.session.isPaused) {
+            timerRef.current = setInterval(() => {
+                dispatch({ 
+                    type: 'UPDATE_ELAPSED_TIME', 
+                    payload: state.session.elapsedTimeMs + 1000 // Add 1 second
+                });
+            }, 1000);
+        }
+        
         return () => {
-            timerService.cleanup();
+            if (timerRef.current) {
+                clearInterval(timerRef.current);
+                timerRef.current = null;
+            }
         };
-    }, []);
+    }, [state.session.isActive, state.session.isPaused, state.session.elapsedTimeMs]);
+    
+    // Handle app state changes to auto-pause session
+    useEffect(() => {
+        const handleAppStateChange = (nextAppState: string) => {
+            if (nextAppState === 'background' && state.isSessionActive && !state.session.isPaused) {
+                // Auto-pause when app goes to background
+                dispatch({ type: 'PAUSE_SESSION' });
+            }
+        };
+        
+        // Subscribe to app state changes
+        // RNAppState.addEventListener('change', handleAppStateChange);
+        
+        // return () => {
+        //     RNAppState.removeEventListener('change', handleAppStateChange);
+        // };
+    }, [state.isSessionActive, state.session.isPaused]);
 
     return (
         <AppStateContext.Provider value={{ state, dispatch }}>
             {children}
         </AppStateContext.Provider>
     );
-}
+};
 
-// Hook for using the app state
+// Custom hook to use the app state
 export function useAppState() {
     const context = useContext(AppStateContext);
     if (context === undefined) {

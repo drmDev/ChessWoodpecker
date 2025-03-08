@@ -9,6 +9,7 @@ export class TimerService {
   private lastTick: number | null = null;
   private dispatch: Function | null = null;
   private tickInterval: number = 1000; // Default to 1 second
+  private isPaused: boolean = false;
 
   /**
    * Sets the dispatch function to be used for sending actions
@@ -38,9 +39,10 @@ export class TimerService {
   start(): void {
     if (this.timer) this.stop();
     
+    this.isPaused = false;
     this.lastTick = Date.now();
     this.timer = setInterval(() => {
-      if (!this.dispatch) return;
+      if (!this.dispatch || this.isPaused) return;
       
       const now = Date.now();
       const elapsed = now - (this.lastTick || now);
@@ -54,23 +56,46 @@ export class TimerService {
   }
 
   /**
-   * Stops the timer without resetting state
+   * Stops the timer
    */
   stop(): void {
     if (this.timer) {
       clearInterval(this.timer);
       this.timer = null;
     }
+    this.lastTick = null;
+    this.isPaused = false;
   }
 
   /**
-   * Cleans up resources used by the timer
-   * Should be called when the component using this service unmounts
+   * Pauses the timer without stopping it completely
+   * The timer will continue to run but won't dispatch updates
+   */
+  pause(): void {
+    this.isPaused = true;
+    this.lastTick = null; // Reset last tick to avoid large time jumps on resume
+  }
+
+  /**
+   * Resumes a paused timer
+   */
+  resume(): void {
+    if (!this.timer) {
+      // If there's no timer running, start one
+      this.start();
+      return;
+    }
+    
+    this.isPaused = false;
+    this.lastTick = Date.now(); // Reset last tick to current time
+  }
+
+  /**
+   * Cleans up resources when the service is no longer needed
    */
   cleanup(): void {
     this.stop();
     this.dispatch = null;
-    this.lastTick = null;
   }
 
   /**
@@ -83,4 +108,4 @@ export class TimerService {
 }
 
 // Create a singleton instance
-export const timerService = new TimerService(); 
+export const timerService = new TimerService();
