@@ -17,14 +17,20 @@ interface UseChessPieceResult {
   pieceGesture: ReturnType<typeof Gesture.Simultaneous>;
 }
 
-// Spring configuration for smoother animations
+// Updated spring configuration for direct, non-bouncy animations
 const SPRING_CONFIG = {
-  damping: 15,
-  stiffness: 150,
+  damping: 30,
+  stiffness: 300,
   mass: 0.5,
-  overshootClamping: false,
-  restDisplacementThreshold: 0.01,
-  restSpeedThreshold: 0.01
+  overshootClamping: true,
+  restDisplacementThreshold: 0.001,
+  restSpeedThreshold: 0.001
+};
+
+// Timing configuration for more predictable animations
+const TIMING_CONFIG = {
+  duration: 100,
+  easing: Easing.bezier(0.25, 0.1, 0.25, 1)
 };
 
 /**
@@ -45,23 +51,23 @@ export function useChessPiece({ baseGesture }: UseChessPieceProps): UseChessPiec
       baseGesture,
       Gesture.Pan()
         .onChange((event) => {
-          // Smooth tracking during drag
+          // Direct tracking during drag - no animation
           translateX.value = event.translationX;
           translateY.value = event.translationY;
         })
         .onBegin(() => {
-          // Smooth pickup animation
-          scale.value = withSpring(1.1, SPRING_CONFIG);
-          elevation.value = withSpring(10, SPRING_CONFIG);
-          opacity.value = withTiming(0.9, { duration: 150, easing: Easing.ease });
+          // Quick pickup with minimal animation
+          scale.value = withTiming(1.05, { duration: 50 });
+          elevation.value = withTiming(5, { duration: 50 });
+          opacity.value = withTiming(0.95, { duration: 50 });
         })
         .onFinalize(() => {
-          // Smooth release animation with natural bounce
-          translateX.value = withSpring(0, SPRING_CONFIG);
-          translateY.value = withSpring(0, SPRING_CONFIG);
-          scale.value = withSpring(1, SPRING_CONFIG);
-          elevation.value = withSpring(1, SPRING_CONFIG);
-          opacity.value = withTiming(1, { duration: 200, easing: Easing.ease });
+          // Direct return to original position with no bounce
+          translateX.value = withTiming(0, TIMING_CONFIG);
+          translateY.value = withTiming(0, TIMING_CONFIG);
+          scale.value = withTiming(1, { duration: 50 });
+          elevation.value = withTiming(1, { duration: 50 });
+          opacity.value = withTiming(1, { duration: 50 });
         })
     );
   }, [baseGesture, translateX, translateY, scale, elevation, opacity]);

@@ -56,10 +56,10 @@ export const SessionSummaryScreen: React.FC = () => {
                 </View>
             ) : (
                 <ScrollView>
-                    {/* Session Statistics */}
+                    {/* Session Statistics - renamed to Summary */}
                     <View style={[styles.statsContainer, { backgroundColor: theme.surface }]}>
-                        <Text style={[styles.sectionTitle, { color: theme.text }]}>
-                            Session Statistics
+                        <Text style={[styles.sectionTitle, { color: theme.accent }]}>
+                            Summary
                         </Text>
 
                         <View style={styles.statRow}>
@@ -111,17 +111,20 @@ export const SessionSummaryScreen: React.FC = () => {
                     {/* Category Statistics */}
                     {Object.keys(session.categoryCounts).length > 0 && (
                         <View style={[styles.categoryContainer, { backgroundColor: theme.surface }]}>
-                            <Text style={[styles.sectionTitle, { color: theme.text }]}>
+                            <Text style={[styles.sectionTitle, { color: theme.accent }]}>
                                 Categories
                             </Text>
                             {getSortedCategories().map(item => (
                                 <View key={item.category} style={styles.categoryRow}>
-                                    <Text style={[styles.categoryName, { color: theme.text }]}>
+                                    <Text style={[styles.categoryName, { color: theme.text }]} numberOfLines={1} ellipsizeMode="tail">
                                         {formatCategoryName(item.category)}
                                     </Text>
                                     <View style={styles.categoryStats}>
                                         <Text style={[styles.categoryTotal, { color: theme.textSecondary }]}>
-                                            {item.total} total
+                                            {item.total}
+                                        </Text>
+                                        <Text style={[styles.categoryStatLabel, { color: theme.textSecondary }]}>
+                                            total
                                         </Text>
                                         <Text style={[styles.categorySuccess, { color: theme.success }]}>
                                             {item.successful} ✓
@@ -138,7 +141,7 @@ export const SessionSummaryScreen: React.FC = () => {
                     {/* Failed Puzzles List */}
                     {session.failedPuzzles.length > 0 && (
                         <View style={[styles.failedPuzzlesContainer, { backgroundColor: theme.surface }]}>
-                            <Text style={[styles.sectionTitle, { color: theme.text }]}>
+                            <Text style={[styles.sectionTitle, { color: theme.accent }]}>
                                 Failed Puzzles
                             </Text>
                             <Text style={[styles.hintText, { color: theme.textSecondary }]}>
@@ -154,7 +157,7 @@ export const SessionSummaryScreen: React.FC = () => {
                                     <Text style={[styles.puzzleId, { color: theme.primary }]}>
                                         #{puzzle.id}
                                     </Text>
-                                    <Text style={[styles.puzzleTheme, { color: theme.text }]}>
+                                    <Text style={[styles.puzzleTheme, { color: theme.text }]} numberOfLines={1} ellipsizeMode="tail">
                                         {formatCategoryName(puzzle.theme)}
                                     </Text>
                                 </TouchableOpacity>
@@ -226,20 +229,31 @@ const styles = StyleSheet.create({
     categoryName: {
         fontSize: 14,
         fontWeight: '500',
+        flex: 1,
+        marginRight: 8,
     },
     categoryStats: {
         flexDirection: 'row',
+        flexShrink: 0,
+        alignItems: 'center',
     },
     categoryTotal: {
         fontSize: 12,
-        marginRight: 8,
+        fontWeight: 'bold',
+        marginRight: 4,
+    },
+    categoryStatLabel: {
+        fontSize: 12,
+        marginRight: 12,
     },
     categorySuccess: {
         fontSize: 12,
-        marginRight: 8,
+        marginRight: 12,
+        fontWeight: '500',
     },
     categoryFailed: {
         fontSize: 12,
+        fontWeight: '500',
     },
     failedPuzzlesContainer: {
         margin: 16,
@@ -261,8 +275,10 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: 'bold',
         marginRight: 16,
+        flexShrink: 0,
     },
     puzzleTheme: {
         fontSize: 14,
+        flex: 1,
     },
 });
