@@ -1,7 +1,6 @@
 import { 
   mapCoordinatesToSquare,
-  mapSquareToCoordinates,
-  BoardOrientation
+  mapSquareToCoordinates
 } from '../orientation-utils';
 
 describe('orientation-utils', () => {

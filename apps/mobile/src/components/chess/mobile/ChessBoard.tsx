@@ -43,7 +43,7 @@ export const MobileChessBoard = () => {
   const attemptPlaySound = useCallback(async (soundName: 'move' | 'capture' | 'check') => {
     try {
       await playSound(soundName);
-    } catch (_error) {
+    } catch (_) {
       // Silently handle errors
     }
   }, []);
@@ -81,7 +81,7 @@ export const MobileChessBoard = () => {
         // Play the sound immediately after the move is confirmed
         try {
           await attemptPlaySound(soundToPlay);
-        } catch (_soundError) {
+        } catch (_) {
           // Silently handle errors
         }
         
@@ -89,7 +89,7 @@ export const MobileChessBoard = () => {
       }
       
       return move !== null;
-    } catch (_e) {
+    } catch (_) {
       return false;
     }
   }, [game, attemptPlaySound]);

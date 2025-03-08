@@ -21,7 +21,7 @@ try {
     level: ReanimatedLogLevel.error, // Only show errors
     strict: false, // Disable strict mode to prevent warnings
   });
-} catch (error) {
+} catch (_) {
   // Replace console.warn with a silent catch or console.error if needed
 }
 

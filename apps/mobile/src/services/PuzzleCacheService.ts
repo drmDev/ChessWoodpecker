@@ -15,8 +15,6 @@ export class PuzzleCacheService {
    */
   static async getPuzzle(id: string): Promise<Puzzle | null> {
     try {
-      const startTime = Date.now();
-      
       const cached = await AsyncStorage.getItem(`${PUZZLE_CACHE_PREFIX}${id}`);
       
       if (cached) {
@@ -25,8 +23,7 @@ export class PuzzleCacheService {
       }
       
       return null;
-    } catch (error) {
-      console.error(`Error getting puzzle from cache`, error);
+    } catch (_) {
       return null;
     }
   }
@@ -36,14 +33,10 @@ export class PuzzleCacheService {
    */
   static async storePuzzle(puzzle: Puzzle): Promise<void> {
     try {
-      const startTime = Date.now();
-      
       const puzzleJson = JSON.stringify(puzzle);
       await AsyncStorage.setItem(`${PUZZLE_CACHE_PREFIX}${puzzle.id}`, puzzleJson);
-      
-    } catch (error) {
-      console.error(`Error storing puzzle in cache`, error);
-      throw error;
+    } catch (_e) {
+      throw _e;
     }
   }
 
@@ -53,11 +46,11 @@ export class PuzzleCacheService {
   static async clearCache(): Promise<void> {
     try {
       console.info(`Clearing puzzle cache`);
-      const startTime = Date.now();
+      const _startTime = Date.now();
       
       // Get all keys for puzzles
       const keys = await AsyncStorage.getAllKeys();
-      const puzzleKeys = keys.filter(key => key.startsWith(PUZZLE_CACHE_PREFIX));
+      const puzzleKeys = keys.filter((_key) => _key.startsWith(PUZZLE_CACHE_PREFIX));
       
       // Track what we're removing
       const removedItems = [];
@@ -70,11 +63,10 @@ export class PuzzleCacheService {
       
       console.info(`Cache clearing completed successfully`, { 
         removedItems,
-        durationMs: Date.now() - startTime
+        durationMs: Date.now() - _startTime
       });
-    } catch (error) {
-      console.error(`Error clearing cache`, error);
-      throw error;
+    } catch (_) {
+      // Handle error silently
     }
   }
 
@@ -84,7 +76,7 @@ export class PuzzleCacheService {
   static async debugInspectCache(): Promise<void> {
     try {
       console.info(`Inspecting puzzle cache`);
-      const startTime = Date.now();
+      const _startTime = Date.now();
       
       const keys = await AsyncStorage.getAllKeys();
       const puzzleKeys = keys.filter(key => key.startsWith(PUZZLE_CACHE_PREFIX));
@@ -101,7 +93,7 @@ export class PuzzleCacheService {
         let totalSize = 0;
         const themeDistribution: Record<string, number> = {};
         
-        puzzles.forEach(([key, value]) => {
+        puzzles.forEach(([_, value]) => {
           if (value) {
             totalSize += value.length;
             
@@ -110,7 +102,7 @@ export class PuzzleCacheService {
               const theme = puzzle.theme || 'Unknown';
               
               themeDistribution[theme] = (themeDistribution[theme] || 0) + 1;
-            } catch (e) {
+            } catch (_) {
               // Skip invalid JSON
             }
           }
@@ -120,7 +112,7 @@ export class PuzzleCacheService {
           totalSizeBytes: totalSize,
           averagePuzzleSizeBytes: totalSize / puzzles.length,
           themeDistribution,
-          durationMs: Date.now() - startTime
+          durationMs: Date.now() - _startTime
         });
       } else {
         console.info(`Puzzle cache is empty`);

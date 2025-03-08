@@ -89,7 +89,7 @@ export const loadSounds = async (): Promise<void> => {
         );
         
         loadedSounds[name as SoundName] = sound;
-      } catch (_e) {
+      } catch (_) {
         // Silently handle errors for individual sounds
       }
     }
@@ -141,12 +141,12 @@ export const playSound = async (name: SoundName): Promise<void> => {
         try {
           await sound!.unloadAsync();
           delete loadedSounds[name];
-        } catch (_err) {
+        } catch (_) {
           // Silently handle errors
         }
       }, 500);
     }
-  } catch (_error) {
+  } catch (_) {
     // Silently handle errors
   }
 };
@@ -166,7 +166,7 @@ export const unloadSounds = async (): Promise<void> => {
             }
             await sound.unloadAsync();
           }
-        } catch (_e) {
+        } catch (_) {
           // Silently handle errors for individual sounds
         }
       }
@@ -179,7 +179,7 @@ export const unloadSounds = async (): Promise<void> => {
     
     // Reset initialization state
     isInitialized = false;
-  } catch (_error) {
+  } catch (_) {
     // Silently handle errors
   }
 }; 

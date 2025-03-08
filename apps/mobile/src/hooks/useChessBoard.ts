@@ -1,8 +1,8 @@
 import { useRef, useCallback, useState, useEffect } from 'react';
-import { Chess, Square } from 'chess.js';
+import { Chess } from 'chess.js';
 import { Dimensions } from 'react-native';
 import { Gesture } from 'react-native-gesture-handler';
-import { useSharedValue, withTiming, runOnJS, useAnimatedStyle, Easing, withSpring } from 'react-native-reanimated';
+import { useSharedValue, withTiming, runOnJS, useAnimatedStyle, Easing } from 'react-native-reanimated';
 import { mapCoordinatesToSquare } from '../utils/chess/orientation-utils';
 import { playSound } from '../utils/sounds';
 
@@ -47,15 +47,6 @@ interface UseChessBoardResult {
 const ANIMATION_CONFIG = {
   duration: 150,
   easing: Easing.bezier(0.25, 0.1, 0.25, 1), // Cubic bezier for natural movement
-};
-
-const SPRING_CONFIG = {
-  damping: 30,
-  stiffness: 300,
-  mass: 0.5,
-  overshootClamping: true,
-  restDisplacementThreshold: 0.001,
-  restSpeedThreshold: 0.001
 };
 
 /**
@@ -121,7 +112,7 @@ export function useChessBoard({
         setLastMove(null);
       }
       updatePositionFromChess();
-    } catch (_error) {
+    } catch (_) {
       // Silently handle errors
     }
   }, [initialFen]);
@@ -215,7 +206,7 @@ export function useChessBoard({
           onMove(from, to);
         }
       }
-    } catch (error) {
+    } catch (_) {
       // Silently handle errors
     } finally {
       isAnimating.current = false;

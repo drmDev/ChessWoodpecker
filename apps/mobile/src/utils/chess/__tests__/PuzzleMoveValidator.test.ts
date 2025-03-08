@@ -111,7 +111,7 @@ describe('PuzzleMoveValidator', () => {
       try {
         const moveResult = testPosition.move(userMove);
         moveWasIllegal = moveResult === null;
-      } catch (error) {
+      } catch (_) {
         // chess.js throws an exception for illegal moves
         moveWasIllegal = true;
       }

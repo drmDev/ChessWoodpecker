@@ -3,7 +3,13 @@ import { useChessBoard } from '../useChessBoard';
 
 // Mock react-native-gesture-handler
 jest.mock('react-native-gesture-handler', () => {
-  const createChainableMock = () => {
+  type MockGesture = {
+    onBegin: jest.Mock;
+    onFinalize: jest.Mock;
+    onChange: jest.Mock;
+  };
+
+  const createChainableMock = (): MockGesture => {
     const mock = {
       onBegin: jest.fn().mockReturnThis(),
       onFinalize: jest.fn().mockReturnThis(),
@@ -15,35 +21,43 @@ jest.mock('react-native-gesture-handler', () => {
   return {
     Gesture: {
       Pan: () => createChainableMock(),
-      Simultaneous: (...gestures: any[]) => createChainableMock(),
+      Simultaneous: (_gestures: unknown[]) => createChainableMock(),
     },
   };
 });
 
 // Mock react-native-reanimated
 jest.mock('react-native-reanimated', () => {
-  const mockSharedValue = (initial: any) => ({
-    value: initial,
+  const mockSharedValue = (_initial: unknown) => ({
+    value: _initial,
   });
 
-  const mockWithTiming = (toValue: number, config: any, callback?: (finished: boolean) => void) => {
+  const mockWithTiming = (
+    _toValue: number,
+    _config: unknown,
+    callback?: (finished: boolean) => void
+  ) => {
     if (callback) {
       callback(true);
     }
-    return toValue;
+    return _toValue;
   };
 
-  const mockWithSpring = (toValue: number, config?: any, callback?: (finished: boolean) => void) => {
+  const mockWithSpring = (
+    _toValue: number,
+    _config: unknown,
+    callback?: (finished: boolean) => void
+  ) => {
     if (callback) {
       callback(true);
     }
-    return toValue;
+    return _toValue;
   };
 
-  const mockRunOnJS = (fn: Function) => fn;
+  const mockRunOnJS = (_fn: () => void) => _fn;
 
-  const mockUseAnimatedStyle = (fn: () => any) => {
-    return fn();
+  const mockUseAnimatedStyle = (_fn: () => Record<string, unknown>) => {
+    return _fn();
   };
 
   return {
@@ -87,7 +101,12 @@ describe('useChessBoard', () => {
   };
 
   beforeEach(() => {
+    jest.useFakeTimers();
     jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
   });
 
   it('should initialize with correct board size', () => {

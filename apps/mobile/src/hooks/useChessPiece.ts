@@ -1,12 +1,6 @@
 import { useCallback } from 'react';
-import { useSharedValue, withSpring, useAnimatedStyle, AnimatedStyle, Easing, withTiming } from 'react-native-reanimated';
 import { Gesture } from 'react-native-gesture-handler';
-
-interface ChessPieceAnimation {
-  translateX: number;
-  translateY: number;
-  scale: number;
-}
+import { useSharedValue, useAnimatedStyle, withTiming, Easing, AnimatedStyle } from 'react-native-reanimated';
 
 interface UseChessPieceProps {
   baseGesture: ReturnType<typeof Gesture.Pan>;
@@ -16,16 +10,6 @@ interface UseChessPieceResult {
   animatedStyle: AnimatedStyle;
   pieceGesture: ReturnType<typeof Gesture.Simultaneous>;
 }
-
-// Updated spring configuration for direct, non-bouncy animations
-const SPRING_CONFIG = {
-  damping: 30,
-  stiffness: 300,
-  mass: 0.5,
-  overshootClamping: true,
-  restDisplacementThreshold: 0.001,
-  restSpeedThreshold: 0.001
-};
 
 // Timing configuration for more predictable animations
 const TIMING_CONFIG = {
