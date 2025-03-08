@@ -8,7 +8,8 @@
     "android": "cd apps/mobile && npm run android",
     "ios": "cd apps/mobile && npm run ios",
     "web": "cd apps/mobile && npm run web",
-    "test": "jest"
+    "test": "jest --maxWorkers=50%",
+    "test:ci": "jest --maxWorkers=2 --ci"
   },
   "keywords": [
     "chess",

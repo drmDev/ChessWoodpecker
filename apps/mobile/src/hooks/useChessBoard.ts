@@ -173,46 +173,6 @@ export function useChessBoard({
     return { x: col * squareSize, y: row * squareSize };
   }, [orientation, squareSize]);
 
-  // This function completes the move after animation
-  const finalizeMove = useCallback((from: string, to: string) => {
-    try {
-      const chess = chessRef.current;
-
-      const move = chess.move({
-        from,
-        to,
-        promotion: 'q' // Always promote to queen for simplicity
-      });
-
-      if (move) {
-        let soundToPlay: 'move' | 'capture' | 'check' = 'move';
-        if (move.captured) {
-          soundToPlay = 'capture';
-        } else if (move.san.includes('+')) {
-          soundToPlay = 'check';
-        }
-
-        playSound(soundToPlay);
-        updatePositionFromChess();
-        setLastMove({ from, to });
-        
-        //  TODO; consider messing with the duration to make it more or less noticeable
-        // Fade out the animated piece before removing it
-        animOpacity.value = withTiming(0, { duration: 150 }, () => {
-          runOnJS(setAnimatingPiece)(null);
-        });
-
-        if (onMove) {
-          onMove(from, to);
-        }
-      }
-    } catch (_) {
-      // Silently handle errors
-    } finally {
-      isAnimating.current = false;
-    }
-  }, [onMove, updatePositionFromChess, animOpacity]);
-
   const handleMove = useCallback((from: string, to: string) => {
     if (isAnimating.current) return false;
     isAnimating.current = true;
@@ -230,50 +190,29 @@ export function useChessBoard({
       return false;
     }
 
-    // Get the piece being moved
-    const piece = position[from];
-    if (!piece) return false;
-
-    // Calculate the source and destination coordinates
-    const fromCoords = getSquareCoordinates(from);
-    const toCoords = getSquareCoordinates(to);
-
-    // Set the animating piece
-    setAnimatingPiece({
-      piece: `${piece.color}-${piece.type}`,
-      fromSquare: from,
-      toSquare: to,
-      fromCoords,
-      toCoords
-    });
-
-    // Set initial position
-    animX.value = fromCoords.x;
-    animY.value = fromCoords.y;
-    animOpacity.value = 1;
-    animScale.value = 1;
-    animElevation.value = 2; // Reduced elevation for less dramatic effect
-
-    // Use timing animation instead of spring for more predictable, direct movement
-    animX.value = withTiming(toCoords.x, { 
-      duration: ANIMATION_CONFIG.duration,
-      easing: ANIMATION_CONFIG.easing
-    });
-    
-    animY.value = withTiming(toCoords.y, { 
-      duration: ANIMATION_CONFIG.duration,
-      easing: ANIMATION_CONFIG.easing
-    }, (finished) => {
-      if (finished) {
-        // Remove the bounce effect completely
-        animScale.value = 1;
-        animElevation.value = withTiming(1, { duration: 50 });        
-        runOnJS(finalizeMove)(from, to);
+    // Make the move immediately
+    const result = chess.move({ from, to, promotion: 'q' });
+    if (result) {
+      updatePositionFromChess();
+      setLastMove({ from, to });
+      
+      if (onMove) {
+        onMove(from, to);
       }
-    });
 
+      // Play appropriate sound
+      let soundToPlay: 'move' | 'capture' | 'check' = 'move';
+      if (result.captured) {
+        soundToPlay = 'capture';
+      } else if (result.san.includes('+')) {
+        soundToPlay = 'check';
+      }
+      playSound(soundToPlay);
+    }
+
+    isAnimating.current = false;
     return true;
-  }, [position, getSquareCoordinates, animX, animY, animOpacity, animScale, animElevation, finalizeMove]);
+  }, [updatePositionFromChess, onMove]);
 
   // Create a gesture handler for chess pieces
   const createPieceGesture = useCallback((square: string, piece: string) => {

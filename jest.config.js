@@ -2,7 +2,19 @@
 module.exports = {
   // Use a preset that works with React Native
   preset: 'jest-expo',
-
+  
+  // Add these cache configurations
+  cacheDirectory: '.jest-cache',
+  cache: true,
+  
+  // Limit the number of workers on CI
+  maxWorkers: process.env.CI ? 2 : '50%',
+  
+  // Add test environment setup timeout
+  testEnvironmentOptions: {
+    setupTimeout: 10000
+  },
+  
   // Transform files with babel
   transform: {
     '^.+\\.(js|jsx|ts|tsx)$': ['babel-jest', { configFile: './babel.config.js' }],

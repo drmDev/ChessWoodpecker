@@ -1,32 +1,22 @@
 /* global jest */
 
-// Mock timers for consistent testing
-jest.useFakeTimers();
+// Use lighter mock implementations
+jest.mock('react-native-reanimated', () => ({
+  useAnimatedStyle: () => ({}),
+  withTiming: (val) => val,
+  useSharedValue: (val) => ({ value: val }),
+  withSpring: (val) => val,
+}), { virtual: true });
 
-// Silence console.error, console.warn, and console.log during tests
-global.console.error = jest.fn();
-global.console.warn = jest.fn();
-global.console.log = jest.fn();
+// Use virtual mocks where possible
+jest.mock('react-native-gesture-handler', () => ({}), { virtual: true });
 
-// Mock Reanimated
-jest.mock('react-native-reanimated', () => {
-  const Reanimated = require('react-native-reanimated/mock');
-  Reanimated.default.call = () => {};
-  return Reanimated;
-});
-
-// Mock Gesture Handler
-jest.mock('react-native-gesture-handler', () => {});
-
-// Mock Expo Asset
 jest.mock('expo-asset', () => ({
   Asset: {
     loadAsync: jest.fn(),
-    fromModule: jest.fn(() => ({
-      downloadAsync: jest.fn(),
-    })),
+    fromModule: jest.fn(() => ({ downloadAsync: jest.fn() })),
   },
-}));
+}), { virtual: true });
 
 // Mock Expo AV
 jest.mock('expo-av', () => ({
@@ -36,4 +26,8 @@ jest.mock('expo-av', () => ({
     },
     setAudioModeAsync: jest.fn(),
   },
-})); 
+}));  // Initialize these before tests run
+jest.useFakeTimers();  // Silence console.error, console.warn, and console.log during tests
+global.console.error = jest.fn();
+global.console.warn = jest.fn();
+global.console.log = jest.fn();

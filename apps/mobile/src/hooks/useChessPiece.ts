@@ -25,7 +25,6 @@ export function useChessPiece({ baseGesture }: UseChessPieceProps): UseChessPiec
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
   const scale = useSharedValue(1);
-  const elevation = useSharedValue(1);
   const opacity = useSharedValue(1);
 
   // Create the gesture handler
@@ -34,26 +33,22 @@ export function useChessPiece({ baseGesture }: UseChessPieceProps): UseChessPiec
       baseGesture,
       Gesture.Pan()
         .onChange((event) => {
-          // Direct tracking during drag - no animation
           translateX.value = event.translationX;
           translateY.value = event.translationY;
         })
         .onBegin(() => {
-          // Quick pickup with minimal animation
-          scale.value = withTiming(1.05, { duration: 50 });
-          elevation.value = withTiming(5, { duration: 50 });
-          opacity.value = withTiming(0.95, { duration: 50 });
+          scale.value = withTiming(1.1, { duration: 50 });
+          opacity.value = withTiming(0.8, { duration: 50 });
         })
         .onFinalize(() => {
-          // Direct return to original position with no bounce
-          translateX.value = withTiming(0, TIMING_CONFIG);
-          translateY.value = withTiming(0, TIMING_CONFIG);
+          // Simply reset the piece position and scale
+          translateX.value = withTiming(0, { duration: 100 });
+          translateY.value = withTiming(0, { duration: 100 });
           scale.value = withTiming(1, { duration: 50 });
-          elevation.value = withTiming(1, { duration: 50 });
           opacity.value = withTiming(1, { duration: 50 });
         })
     );
-  }, [baseGesture, translateX, translateY, scale, elevation, opacity]);
+  }, [baseGesture, translateX, translateY, scale, opacity]);
 
   // Create animated style
   const animatedStyle = useAnimatedStyle(() => ({
@@ -62,13 +57,8 @@ export function useChessPiece({ baseGesture }: UseChessPieceProps): UseChessPiec
       { translateY: translateY.value },
       { scale: scale.value },
     ],
-    elevation: elevation.value,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: elevation.value / 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: elevation.value,
     opacity: opacity.value,
-    zIndex: elevation.value > 1 ? 100 : 1,
+    zIndex: scale.value > 1 ? 100 : 1,
   }));
 
   return {

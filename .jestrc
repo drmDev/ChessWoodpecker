@@ -1,0 +1,4 @@
+{
+  "workerIdleMemoryLimit": "2GB",
+  "workerThreads": 4
+}
