@@ -54,7 +54,8 @@ export const MainScreen: React.FC = () => {
     const handleFetchNewPuzzle = async () => {
         console.log('Fetching New Puzzle:', {
             currentPuzzleId: state.currentPuzzle?.id,
-            isTransitioning: isTransitioningToPuzzle
+            isTransitioning: isTransitioningToPuzzle,
+            remainingPuzzles: puzzleService.getRemainingPuzzleCount()
         });
         
         try {
@@ -62,11 +63,21 @@ export const MainScreen: React.FC = () => {
             setIsPuzzleSetupComplete(false);
             
             dispatch({ type: 'SET_LOADING', payload: true });
-            const puzzle = await puzzleService.fetchRandomPuzzle();
+            
+            // Get the next puzzle from the session
+            const puzzle = await puzzleService.getNextSessionPuzzle();
+            
+            if (!puzzle) {
+                // If no more puzzles in the session, end the session
+                console.log('No more puzzles in session. Session complete!');
+                dispatch({ type: 'END_SESSION' });
+                return;
+            }
             
             console.log('New Puzzle Fetched:', {
                 newPuzzleId: puzzle.id,
-                fen: puzzle.fen
+                fen: puzzle.fen,
+                remainingPuzzles: puzzleService.getRemainingPuzzleCount()
             });
             
             dispatch({ type: 'SET_CURRENT_PUZZLE', payload: puzzle });
@@ -136,8 +147,17 @@ export const MainScreen: React.FC = () => {
             setIsTransitioningToPuzzle(true);
             dispatch({ type: 'START_SESSION' });
             dispatch({ type: 'SET_LOADING', payload: true });
-            const puzzle = await puzzleService.fetchRandomPuzzle();
-            dispatch({ type: 'SET_CURRENT_PUZZLE', payload: puzzle });
+            
+            // Initialize the session with shuffled puzzles
+            puzzleService.initializeSession();
+            
+            // Get the first puzzle from the session
+            const puzzle = await puzzleService.getNextSessionPuzzle();
+            if (puzzle) {
+                dispatch({ type: 'SET_CURRENT_PUZZLE', payload: puzzle });
+            } else {
+                throw new Error('Failed to get first puzzle for session');
+            }
         } catch (error) {
             console.error('Failed to start session:', error);
         } finally {
@@ -151,9 +171,17 @@ export const MainScreen: React.FC = () => {
             if (savedSessionData) {
                 const sessionState = JSON.parse(savedSessionData);
                 dispatch({ type: 'LOAD_STORED_SESSION', payload: sessionState });
-                // Start a new puzzle
-                const puzzle = await puzzleService.fetchRandomPuzzle();
-                dispatch({ type: 'SET_CURRENT_PUZZLE', payload: puzzle });
+                
+                // Initialize a new session with shuffled puzzles
+                puzzleService.initializeSession();
+                
+                // Get the first puzzle from the session
+                const puzzle = await puzzleService.getNextSessionPuzzle();
+                if (puzzle) {
+                    dispatch({ type: 'SET_CURRENT_PUZZLE', payload: puzzle });
+                } else {
+                    throw new Error('Failed to get first puzzle for resumed session');
+                }
             }
         } catch (error) {
             console.error('Failed to resume session:', error);

@@ -6,6 +6,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { formatTimeHHMMSS } from '../../utils/timeUtils';
 import { useNavigation } from '@react-navigation/native';
 import { playSound, SoundTypes } from '../../utils/sounds';
+import { puzzleService } from '../../services/PuzzleService';
 
 export const SessionStatusBar: React.FC = () => {
   const { state, dispatch } = useAppState();
@@ -14,7 +15,11 @@ export const SessionStatusBar: React.FC = () => {
   const [isExpanded, setIsExpanded] = useState(false);
   
   const { session } = state;
-  const totalPuzzles = session.successfulPuzzles.length + session.failedPuzzles.length + 1;
+  
+  // Calculate remaining puzzles
+  const remainingPuzzles = puzzleService.getRemainingPuzzleCount();
+  const totalPuzzles = state.totalPuzzlesInSession + 1;
+  const completedPuzzles = state.totalPuzzlesInSession - remainingPuzzles + 1;
   
   const toggleExpanded = () => {
     setIsExpanded(!isExpanded);
@@ -41,33 +46,35 @@ export const SessionStatusBar: React.FC = () => {
   if (!session.isActive) return null;
   
   return (
-    <View style={[styles.container, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-      {/* Main status bar - always visible */}
-      <View style={styles.mainBar}>
-        <View style={styles.statusInfo}>
-          <Text style={[styles.statusText, { color: session.isPaused ? theme.error : theme.success }]}>
-            {session.isPaused ? 'PAUSED' : 'ACTIVE'}
-          </Text>
-          <Text style={[styles.timeText, { color: theme.text }]}>
-            {formatTimeHHMMSS(session.elapsedTimeMs)}
-          </Text>
-          <Text style={[styles.puzzleCountText, { color: theme.primary }]}>
-            Puzzle {totalPuzzles}/200
-          </Text>
+    <View style={styles.outerContainer}>
+      <View style={[styles.container, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+        {/* Main status bar - always visible */}
+        <View style={styles.mainBar}>
+          <View style={styles.statusInfo}>
+            <Text style={[styles.statusText, { color: session.isPaused ? theme.error : theme.success }]}>
+              {session.isPaused ? 'PAUSED' : 'ACTIVE'}
+            </Text>
+            <Text style={[styles.timeText, { color: theme.text }]}>
+              {formatTimeHHMMSS(session.elapsedTimeMs)}
+            </Text>
+            <Text style={[styles.puzzleCountText, { color: theme.primary }]}>
+              Puzzle {completedPuzzles}/{totalPuzzles}
+            </Text>
+          </View>
+          
+          <TouchableOpacity onPress={toggleExpanded} style={styles.expandButton}>
+            <Ionicons 
+              name={isExpanded ? 'chevron-up' : 'chevron-down'} 
+              size={20} 
+              color={theme.text} 
+            />
+          </TouchableOpacity>
         </View>
-        
-        <TouchableOpacity onPress={toggleExpanded} style={styles.expandButton}>
-          <Ionicons 
-            name={isExpanded ? 'chevron-up' : 'chevron-down'} 
-            size={20} 
-            color={theme.text} 
-          />
-        </TouchableOpacity>
       </View>
       
       {/* Expanded controls - only visible when expanded */}
       {isExpanded && (
-        <View style={[styles.expandedControls, { backgroundColor: theme.surface }]}>
+        <View style={[styles.expandedControls, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           <TouchableOpacity 
             style={[styles.controlButton, { backgroundColor: session.isPaused ? theme.primary : theme.warning }]} 
             onPress={handlePauseResume}
@@ -97,14 +104,18 @@ export const SessionStatusBar: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  outerContainer: {
+    width: '100%',
+  },
   buttonText: {
     fontSize: 12,
     fontWeight: '500',
   },
   container: {
     borderBottomWidth: 1,
-    marginBottom: 8,
+    marginBottom: 0,
     width: '100%',
+    paddingVertical: 8,
   },
   controlButton: {
     alignItems: 'center',
@@ -121,14 +132,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    marginBottom: 8,
   },
   mainBar: {
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 4,
   },
   puzzleCountText: {
     fontSize: 12,
@@ -144,5 +157,5 @@ const styles = StyleSheet.create({
   timeText: {
     fontWeight: '500',
     marginRight: 12,
-  },
+  }
 }); 

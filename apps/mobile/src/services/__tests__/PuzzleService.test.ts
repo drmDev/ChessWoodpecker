@@ -44,6 +44,9 @@ describe('PuzzleService', () => {
     // Clear all mocks before each test
     jest.clearAllMocks();
     
+    // Reset the puzzle service session
+    puzzleService.clearSession();
+    
     // Setup default mock implementations
     (global.fetch as jest.Mock).mockImplementation(async (url: string) => {
       // Extract puzzle ID from URL
@@ -57,58 +60,67 @@ describe('PuzzleService', () => {
       };
     });
   });
-
-  describe('fetchRandomPuzzle', () => {
-    it('should return a cached puzzle if available', async () => {
-      // Setup cache hit
-      jest.spyOn(PuzzleCacheService, 'getPuzzle').mockResolvedValue(mockProcessedPuzzle);
-
-      const result = await puzzleService.fetchRandomPuzzle();
-
-      expect(result).toEqual(mockProcessedPuzzle);
-      expect(PuzzleCacheService.getPuzzle).toHaveBeenCalled();
-      expect(global.fetch).not.toHaveBeenCalled();
+  
+  describe('Session-based puzzle functionality', () => {
+    it('should initialize a session with shuffled puzzles', () => {
+      const count = puzzleService.initializeSession();
+      
+      // Our mock has 4 puzzles, so we should get all of them
+      expect(count).toBe(4);
+      expect(puzzleService.getRemainingPuzzleCount()).toBe(4);
     });
 
-    it('should fetch from backend and cache when puzzle not in cache', async () => {
-      // Setup cache miss
+    it('should return puzzles in sequence from the session queue', async () => {
+      // Setup cache miss but successful backend fetch
       jest.spyOn(PuzzleCacheService, 'getPuzzle').mockResolvedValue(null);
       jest.spyOn(PuzzleCacheService, 'storePuzzle').mockResolvedValue();
-
-      const result = await puzzleService.fetchRandomPuzzle();
-
-      expect(result).toBeDefined();
-      expect(result.id).toBeDefined();
-      expect(PuzzleCacheService.getPuzzle).toHaveBeenCalled();
-      expect(global.fetch).toHaveBeenCalled();
-      expect(PuzzleCacheService.storePuzzle).toHaveBeenCalled();
+      
+      // Initialize session
+      puzzleService.initializeSession();
+      
+      // Get all puzzles from the queue
+      const puzzles = [];
+      let puzzle = await puzzleService.getNextSessionPuzzle();
+      
+      while (puzzle) {
+        puzzles.push(puzzle);
+        puzzle = await puzzleService.getNextSessionPuzzle();
+      }
+      
+      // Should have 4 unique puzzles (from our mock collection)
+      expect(puzzles.length).toBe(4);
+      
+      // All puzzles should be unique
+      const uniqueIds = new Set(puzzles.map(p => p.id));
+      expect(uniqueIds.size).toBe(4);
+      
+      // Queue should be empty now
+      expect(puzzleService.getRemainingPuzzleCount()).toBe(0);
     });
 
-    it('should handle backend errors gracefully', async () => {
+    it('should return null when session queue is empty', async () => {
+      // Initialize and then clear session
+      puzzleService.initializeSession();
+      puzzleService.clearSession();
+      
+      const puzzle = await puzzleService.getNextSessionPuzzle();
+      expect(puzzle).toBeNull();
+    });
+
+    it('should return null when throwError is false and there is an error', async () => {
       // Setup cache miss and backend error
       jest.spyOn(PuzzleCacheService, 'getPuzzle').mockResolvedValue(null);
-      (global.fetch as jest.Mock).mockResolvedValue({
-        ok: false,
-        status: 404
+      
+      // Important: Override the global fetch mock for this specific test
+      (global.fetch as jest.Mock).mockImplementation(() => {
+        return Promise.resolve({
+          ok: false,
+          status: 404
+        });
       });
-
-      await expect(puzzleService.fetchRandomPuzzle()).rejects.toThrow('Backend returned status 404');
-    });
-
-    it('should select a random puzzle from the collection', async () => {
-      // Setup cache miss
-      jest.spyOn(PuzzleCacheService, 'getPuzzle').mockResolvedValue(null);
-      jest.spyOn(PuzzleCacheService, 'storePuzzle').mockResolvedValue();
-
-      // Call multiple times to ensure randomness
-      const results = new Set();
-      for (let i = 0; i < 10; i++) {
-        const result = await puzzleService.fetchRandomPuzzle();
-        results.add(result.id);
-      }
-
-      // Should have seen at least 2 different IDs (it's random, but very unlikely to get same ID 10 times)
-      expect(results.size).toBeGreaterThan(1);
+      
+      const result = await puzzleService.fetchPuzzleById('test123', false);
+      expect(result).toBeNull();
     });
   });
 });
