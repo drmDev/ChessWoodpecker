@@ -1,5 +1,6 @@
 import { renderHook, act } from '@testing-library/react-hooks';
 import { useChessBoard } from '../useChessBoard';
+import * as Haptics from 'expo-haptics';
 
 // Mock react-native-gesture-handler
 jest.mock('react-native-gesture-handler', () => {
@@ -101,8 +102,8 @@ describe('useChessBoard', () => {
   };
 
   beforeEach(() => {
-    jest.useFakeTimers();
     jest.clearAllMocks();
+    jest.useFakeTimers();
   });
 
   afterEach(() => {
@@ -166,5 +167,15 @@ describe('useChessBoard', () => {
 
     const coords = result.current.getSquareCoordinates('e4');
     expect(coords).toEqual({ x: 150, y: 150 });
+  });
+
+  it('should trigger haptic feedback on valid move', () => {
+    const { result } = renderHook(() => useChessBoard(defaultProps));
+
+    act(() => {
+      result.current.handleMove('e2', 'e4');
+    });
+
+    expect(Haptics.impactAsync).toHaveBeenCalledWith(Haptics.ImpactFeedbackStyle.Medium);
   });
 }); 

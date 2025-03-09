@@ -14,7 +14,7 @@ export const SessionStatusBar: React.FC = () => {
   const [isExpanded, setIsExpanded] = useState(false);
   
   const { session } = state;
-  const totalPuzzles = session.successfulPuzzles.length + session.failedPuzzles.length;
+  const totalPuzzles = session.successfulPuzzles.length + session.failedPuzzles.length + 1;
   
   const toggleExpanded = () => {
     setIsExpanded(!isExpanded);

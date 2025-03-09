@@ -31,3 +31,20 @@ jest.useFakeTimers();  // Silence console.error, console.warn, and console.log d
 global.console.error = jest.fn();
 global.console.warn = jest.fn();
 global.console.log = jest.fn();
+
+// Mock expo-haptics
+jest.mock('expo-haptics', () => ({
+  impactAsync: jest.fn(),
+  notificationAsync: jest.fn(),
+  selectionAsync: jest.fn(),
+  ImpactFeedbackStyle: {
+    Light: 'light',
+    Medium: 'medium',
+    Heavy: 'heavy'
+  },
+  NotificationFeedbackType: {
+    Success: 'success',
+    Warning: 'warning',
+    Error: 'error'
+  }
+}));
