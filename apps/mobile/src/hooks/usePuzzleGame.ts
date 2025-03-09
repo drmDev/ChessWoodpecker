@@ -6,6 +6,7 @@ import { useAppState } from '../contexts/AppStateContext';
 import { Puzzle } from '../models/PuzzleModel';
 import { extractMoveComponents, isPromotionMove, replayMoves, getMoveType } from '../utils/chess/PuzzleLogic';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { triggerHaptic } from '../utils/haptics';
 
 interface PuzzleGameState {
   currentPosition: string | null;
@@ -218,8 +219,11 @@ export function usePuzzleGame(
       moveIndex: currentMoveIndex
     });
 
-    // Play failure sound first
-    await playSound(SoundTypes.FAILURE);
+    // Play failure sound and heavy haptic feedback
+    await Promise.all([
+      playSound(SoundTypes.FAILURE),
+      triggerHaptic('heavy')
+    ]);
 
     // Record the failed puzzle attempt
     dispatch({

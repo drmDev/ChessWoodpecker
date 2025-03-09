@@ -5,6 +5,7 @@ import { Gesture } from 'react-native-gesture-handler';
 import { useSharedValue, withTiming, runOnJS, useAnimatedStyle, Easing } from 'react-native-reanimated';
 import { mapCoordinatesToSquare } from '../utils/chess/orientation-utils';
 import { playSound } from '../utils/sounds';
+import { triggerHaptic } from '../utils/haptics';
 
 interface BoardPosition {
   [square: string]: {
@@ -200,12 +201,16 @@ export function useChessBoard({
         onMove(from, to);
       }
 
-      // Play appropriate sound
+      // Play appropriate sound and haptic feedback
       let soundToPlay: 'move' | 'capture' | 'check' = 'move';
       if (result.captured) {
         soundToPlay = 'capture';
+        triggerHaptic('medium');
       } else if (result.san.includes('+')) {
         soundToPlay = 'check';
+        triggerHaptic('heavy');
+      } else {
+        triggerHaptic('medium');
       }
       playSound(soundToPlay);
     }
@@ -220,6 +225,7 @@ export function useChessBoard({
       .runOnJS(true)  // Run all callbacks on JS thread - critical for proper gesture handling
       .onBegin(() => {
         setDraggedPiece({ square, piece });
+        triggerHaptic('light');
         if (onDragStart) {
           onDragStart();
         }
