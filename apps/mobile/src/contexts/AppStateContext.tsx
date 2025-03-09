@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react';
 import { Puzzle } from '../models/PuzzleModel';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { puzzleService } from '../services/PuzzleService';
 
 // Define puzzle attempt record structure
 interface PuzzleAttempt {
@@ -31,16 +32,22 @@ interface SessionState {
     };
 }
 
-interface AppState {
+// Renamed from AppState to ChessAppState
+interface ChessAppState {
     currentPuzzle: Puzzle | null;
     isLoading: boolean;
     theme: 'light' | 'dark';
     isSessionActive: boolean;
     session: SessionState;
+    puzzlesSolved: number;
+    puzzlesAttempted: number;
+    sessionStartTime: number | null;
+    sessionCompletedTime: number | null;
+    totalPuzzlesInSession: number;
 }
 
 // Define action types
-type AppAction =
+type Action =
     | { type: 'START_SESSION' }
     | { type: 'END_SESSION' }
     | { type: 'PAUSE_SESSION' }
@@ -51,19 +58,22 @@ type AppAction =
     | { type: 'RECORD_FAILED_PUZZLE'; payload: { id: string; theme: string; rating?: number } }
     | { type: 'UPDATE_ELAPSED_TIME'; payload: number }
     | { type: 'TOGGLE_THEME' }
-    | { type: 'LOAD_STORED_SESSION'; payload: SessionState };
+    | { type: 'LOAD_STORED_SESSION'; payload: Partial<ChessAppState> }
+    | { type: 'SET_TOTAL_PUZZLES'; payload: number }
+    | { type: 'INCREMENT_PUZZLES_SOLVED' }
+    | { type: 'INCREMENT_PUZZLES_ATTEMPTED' };
 
-// Create context
+// Create context with renamed type
 const AppStateContext = createContext<{
-    state: AppState;
-    dispatch: React.Dispatch<AppAction>;
+    state: ChessAppState;
+    dispatch: React.Dispatch<Action>;
 } | undefined>(undefined);
 
 // Add storage key constant at the top
 const SESSION_STORAGE_KEY = '@chess_woodpecker/session';
 
 // Initial state with simplified session
-const initialState: AppState = {
+const initialState: ChessAppState = {
     currentPuzzle: null,
     isLoading: false,
     theme: 'light',
@@ -78,7 +88,12 @@ const initialState: AppState = {
         successfulPuzzles: [],
         failedPuzzles: [],
         categoryCounts: {}
-    }
+    },
+    puzzlesSolved: 0,
+    puzzlesAttempted: 0,
+    sessionStartTime: null,
+    sessionCompletedTime: null,
+    totalPuzzlesInSession: 200, // Default value, will be updated when session is initialized
 };
 
 // Helper function to update category counts
@@ -108,13 +123,17 @@ function updateCategoryCounts(
     return updatedCounts;
 }
 
-// Reducer function
-function appReducer(state: AppState, action: AppAction): AppState {
+// Reducer function updated with renamed type
+function appReducer(state: ChessAppState, action: Action): ChessAppState {
     switch (action.type) {
         case 'START_SESSION':
             return {
                 ...state,
                 isSessionActive: true,
+                puzzlesSolved: 0,
+                puzzlesAttempted: 0,
+                sessionStartTime: Date.now(),
+                sessionCompletedTime: null,
                 currentPuzzle: null,
                 isLoading: false,
                 session: {
@@ -135,7 +154,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
                 ...state,
                 isSessionActive: false,
                 currentPuzzle: null,
-                isLoading: false,
+                sessionCompletedTime: Date.now(),
                 session: {
                     ...state.session,
                     isActive: false,
@@ -262,8 +281,26 @@ function appReducer(state: AppState, action: AppAction): AppState {
         case 'LOAD_STORED_SESSION':
             return {
                 ...state,
+                ...action.payload,
                 isSessionActive: true,
-                session: action.payload
+            };
+            
+        case 'SET_TOTAL_PUZZLES':
+            return {
+                ...state,
+                totalPuzzlesInSession: action.payload,
+            };
+            
+        case 'INCREMENT_PUZZLES_SOLVED':
+            return {
+                ...state,
+                puzzlesSolved: state.puzzlesSolved + 1,
+            };
+            
+        case 'INCREMENT_PUZZLES_ATTEMPTED':
+            return {
+                ...state,
+                puzzlesAttempted: state.puzzlesAttempted + 1,
             };
             
         default:
@@ -271,7 +308,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
     }
 }
 
-// Provider component
+// Provider component updated with renamed type
 export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [state, dispatch] = useReducer(appReducer, initialState);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -311,6 +348,32 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             }
         };        
     }, [state.isSessionActive, state.session.isPaused]);
+
+    // Save session state to AsyncStorage whenever it changes
+    useEffect(() => {
+        if (state.isSessionActive) {
+            const sessionData = {
+                puzzlesSolved: state.puzzlesSolved,
+                puzzlesAttempted: state.puzzlesAttempted,
+                sessionStartTime: state.sessionStartTime,
+                totalPuzzlesInSession: state.totalPuzzlesInSession,
+            };
+
+            AsyncStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(sessionData))
+                .catch(error => console.error('Failed to save session state:', error));
+        }
+    }, [state.isSessionActive, state.puzzlesSolved, state.puzzlesAttempted]);
+
+    // Update total puzzles when session starts
+    useEffect(() => {
+        if (state.isSessionActive && state.sessionStartTime) {
+            // Get the actual number of puzzles in the session
+            const totalPuzzles = puzzleService.getRemainingPuzzleCount();
+            if (totalPuzzles > 0) {
+                dispatch({ type: 'SET_TOTAL_PUZZLES', payload: totalPuzzles });
+            }
+        }
+    }, [state.isSessionActive, state.sessionStartTime]);
 
     return (
         <AppStateContext.Provider value={{ state, dispatch }}>
