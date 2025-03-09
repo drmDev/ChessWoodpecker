@@ -1,6 +1,7 @@
 // AppStateContext.tsx
 import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react';
 import { Puzzle } from '../models/PuzzleModel';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Define puzzle attempt record structure
 interface PuzzleAttempt {
@@ -49,13 +50,17 @@ type AppAction =
     | { type: 'RECORD_SUCCESSFUL_PUZZLE'; payload: { id: string; theme: string; rating?: number } }
     | { type: 'RECORD_FAILED_PUZZLE'; payload: { id: string; theme: string; rating?: number } }
     | { type: 'UPDATE_ELAPSED_TIME'; payload: number }
-    | { type: 'TOGGLE_THEME' };
+    | { type: 'TOGGLE_THEME' }
+    | { type: 'LOAD_STORED_SESSION'; payload: SessionState };
 
 // Create context
 const AppStateContext = createContext<{
     state: AppState;
     dispatch: React.Dispatch<AppAction>;
 } | undefined>(undefined);
+
+// Add storage key constant at the top
+const SESSION_STORAGE_KEY = '@chess_woodpecker/session';
 
 // Initial state with simplified session
 const initialState: AppState = {
@@ -175,8 +180,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
             if (!state.session.isActive) return state;
             
             const category = action.payload.theme || 'Uncategorized';
-            
-            return {
+            const newState = {
                 ...state,
                 session: {
                     ...state.session,
@@ -198,14 +202,19 @@ function appReducer(state: AppState, action: AppAction): AppState {
                     )
                 }
             };
+            
+            // Persist session after update
+            AsyncStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(newState.session))
+                .catch(error => console.error('Failed to save session:', error));
+            
+            return newState;
         }
             
         case 'RECORD_FAILED_PUZZLE': {
             if (!state.session.isActive) return state;
             
             const failedCategory = action.payload.theme || 'Uncategorized';
-            
-            return {
+            const newState = {
                 ...state,
                 session: {
                     ...state.session,
@@ -227,6 +236,12 @@ function appReducer(state: AppState, action: AppAction): AppState {
                     )
                 }
             };
+            
+            // Persist session after update
+            AsyncStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(newState.session))
+                .catch(error => console.error('Failed to save session:', error));
+            
+            return newState;
         }
             
         case 'UPDATE_ELAPSED_TIME':
@@ -242,6 +257,13 @@ function appReducer(state: AppState, action: AppAction): AppState {
             return {
                 ...state,
                 theme: state.theme === 'light' ? 'dark' : 'light'
+            };
+            
+        case 'LOAD_STORED_SESSION':
+            return {
+                ...state,
+                isSessionActive: true,
+                session: action.payload
             };
             
         default:

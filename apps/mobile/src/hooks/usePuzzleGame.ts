@@ -1,10 +1,11 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Chess } from 'chess.js';
 import { validatePuzzleMove } from '../utils/chess/PuzzleMoveValidator';
-import { playSound } from '../utils/sounds';
+import { playSound, SoundTypes } from '../utils/sounds';
 import { useAppState } from '../contexts/AppStateContext';
 import { Puzzle } from '../models/PuzzleModel';
 import { extractMoveComponents, isPromotionMove, replayMoves, getMoveType } from '../utils/chess/PuzzleLogic';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface PuzzleGameState {
   currentPosition: string | null;
@@ -44,6 +45,21 @@ export function usePuzzleGame(
   const [isOpponentMoving, setIsOpponentMoving] = useState(false);
   const [isAutoSolving, setIsAutoSolving] = useState(false);
 
+  // Add debug logging for state changes
+  useEffect(() => {
+    if (state.currentPuzzle) {
+      console.log('Puzzle State Change:', {
+        puzzleId: state.currentPuzzle.id,
+        fen: state.currentPuzzle.fen,
+        currentPosition,
+        currentMoveIndex,
+        chessInstanceFen: chessInstance.fen(),
+        isAutoSolving,
+        isOpponentMoving
+      });
+    }
+  }, [state.currentPuzzle, currentPosition, currentMoveIndex]);
+
   // Reset game state when a new puzzle is loaded or session ends
   useEffect(() => {
     const puzzle = state.currentPuzzle;
@@ -77,11 +93,22 @@ export function usePuzzleGame(
   }, [state.currentPuzzle]);
 
   const resetGame = useCallback((puzzle: Puzzle) => {
+    console.log('Resetting Game:', {
+      puzzleId: puzzle.id,
+      beforeResetFen: chessInstance.fen(),
+      newPuzzleFen: puzzle.fen
+    });
+    
     chessInstance.load(puzzle.fen);
     setCurrentPosition(puzzle.fen);
     setCurrentMoveIndex(0);
     setIsOpponentMoving(false);
     setIsAutoSolving(false);
+
+    console.log('After Reset:', {
+      currentPosition: puzzle.fen,
+      chessInstanceFen: chessInstance.fen()
+    });
   }, [chessInstance]);
 
   const makeMove = useCallback(async (from: string, to: string, promotion?: string) => {
@@ -148,7 +175,13 @@ export function usePuzzleGame(
     }
   }, [state.currentPuzzle, chessInstance, makeMove, onPuzzleComplete]);
 
-  const handlePuzzleSuccess = useCallback(() => {
+  const handlePuzzleSuccess = useCallback(async () => {
+    console.log('Puzzle Success:', {
+      puzzleId: state.currentPuzzle?.id,
+      currentFen: chessInstance.fen(),
+      moveIndex: currentMoveIndex
+    });
+    
     if (!state.currentPuzzle) {
       return;
     }
@@ -162,14 +195,31 @@ export function usePuzzleGame(
       }
     });
 
+    try {
+      // Save session after recording success
+      await AsyncStorage.setItem('@chess_woodpecker/session', JSON.stringify(state.session));
+      console.log('Session saved after successful puzzle');
+    } catch (error) {
+      console.error('Failed to save session after successful puzzle:', error);
+    }
+
     // Complete the puzzle
     onPuzzleComplete();
-  }, [onPuzzleComplete, state.currentPuzzle, dispatch]);
+  }, [onPuzzleComplete, state.currentPuzzle, state.session, dispatch]);
 
-  const handlePuzzleFailure = useCallback(() => {
+  const handlePuzzleFailure = useCallback(async () => {
     if (!state.currentPuzzle) {
       return;
     }
+
+    console.log('Puzzle Failure:', {
+      puzzleId: state.currentPuzzle?.id,
+      currentFen: chessInstance.fen(),
+      moveIndex: currentMoveIndex
+    });
+
+    // Play failure sound first
+    await playSound(SoundTypes.FAILURE);
 
     // Record the failed puzzle attempt
     dispatch({
@@ -179,16 +229,70 @@ export function usePuzzleGame(
         theme: state.currentPuzzle.theme || 'Uncategorized'
       }
     });
-  }, [state.currentPuzzle, dispatch]);
+
+    // Reset to initial position
+    const puzzle = state.currentPuzzle;
+    chessInstance.load(puzzle.fen);
+    setCurrentPosition(puzzle.fen);
+    setCurrentMoveIndex(0);
+
+    // Auto-solve to show correct solution
+    setIsAutoSolving(true);
+
+    try {
+      // Play through each move with delay
+      for (const move of puzzle.solutionMovesUCI) {
+        await new Promise(resolve => setTimeout(resolve, AUTO_SOLVE_MOVE_DELAY));
+        const { from, to, promotion } = extractMoveComponents(move);
+        await makeMove(from, to, promotion);
+      }
+
+      // Wait before loading next puzzle
+      await new Promise(resolve => setTimeout(resolve, NEXT_PUZZLE_DELAY));
+    } catch (error) {
+      console.error('Error during auto-solve after failure:', error);
+    } finally {
+      setIsAutoSolving(false);
+      onPuzzleComplete(); // Move to next puzzle
+    }
+  }, [state.currentPuzzle, chessInstance, makeMove, dispatch, onPuzzleComplete, currentMoveIndex]);
 
   const handleMove = useCallback(async (from: string, to: string) => {
-    if (!state.currentPuzzle || isAutoSolving || isOpponentMoving) return;
+    console.log('Move Attempt:', {
+      from,
+      to,
+      isAutoSolving,
+      isOpponentMoving,
+      currentFen: chessInstance.fen(),
+      expectedFen: state.currentPuzzle?.fen,
+      moveIndex: currentMoveIndex
+    });
+
+    if (!state.currentPuzzle || isAutoSolving || isOpponentMoving) {
+      console.log('Move rejected - state check:', {
+        hasPuzzle: !!state.currentPuzzle,
+        isAutoSolving,
+        isOpponentMoving
+      });
+      return;
+    }
 
     const puzzle = state.currentPuzzle;
 
+    // Debug the current state
+    console.log('Attempting move:', {
+      from,
+      to,
+      currentMoveIndex,
+      currentFen: chessInstance.fen()
+    });
+
     // Load current position and replay moves
     if (!replayMoves(chessInstance, puzzle.fen, puzzle.solutionMovesUCI.slice(0, currentMoveIndex))) {
-      console.error(`Failed to replay moves to current position`);
+      console.error('Failed to replay moves to current position', {
+        puzzleFen: puzzle.fen,
+        previousMoves: puzzle.solutionMovesUCI.slice(0, currentMoveIndex)
+      });
       return;
     }
 
@@ -201,38 +305,57 @@ export function usePuzzleGame(
       currentMoveIndex
     );
 
-    if (result.isValid) {
-      // Make the user's move
-      await makeMove(from, to, shouldPromote ? 'q' : undefined);
-      const newMoveIndex = currentMoveIndex + 1;
-      setCurrentMoveIndex(newMoveIndex);
+    console.log('Move validation result:', {
+      isValid: result.isValid,
+      isComplete: result.isComplete,
+      expectedMove: puzzle.solutionMovesUCI[currentMoveIndex]
+    });
 
-      if (result.isComplete) {
-        playSound('success');
-        // Record successful attempt before completing
-        handlePuzzleSuccess();
-      } else {
-        // Make opponent's move after a short delay
-        setIsOpponentMoving(true);
-        await new Promise(resolve => setTimeout(resolve, OPPONENT_MOVE_DELAY));
-
-        // Get the next move using the updated move index
-        const { from: oppFrom, to: oppTo, promotion: oppPromotion } = extractMoveComponents(puzzle.solutionMovesUCI[newMoveIndex]);
-
-        await makeMove(oppFrom, oppTo, oppPromotion);
-        setCurrentMoveIndex(newMoveIndex + 1);
-        setIsOpponentMoving(false);
-      }
-    } else {
-      playSound('failure');
-
-      // First record the failure
-      handlePuzzleFailure();
-
-      // Then start auto-solve (which will call onPuzzleComplete when done)
-      autoSolvePuzzle();
+    if (!result.isValid) {
+      console.log('Invalid move:', {
+        attempted: { from, to },
+        expected: puzzle.solutionMovesUCI[currentMoveIndex]
+      });
+      await handlePuzzleFailure();
+      return;
     }
-  }, [state.currentPuzzle, currentMoveIndex, makeMove, isAutoSolving, isOpponentMoving, autoSolvePuzzle, handlePuzzleSuccess, handlePuzzleFailure]);
+
+    // Make the user's move
+    const moveSuccess = await makeMove(from, to, shouldPromote ? 'q' : undefined);
+    if (!moveSuccess) {
+      console.error('Failed to make move despite validation passing');
+      return;
+    }
+
+    const newMoveIndex = currentMoveIndex + 1;
+    setCurrentMoveIndex(newMoveIndex);
+
+    if (result.isComplete) {
+      playSound('success');
+      handlePuzzleSuccess();
+    } else {
+      // Make opponent's move after a short delay
+      setIsOpponentMoving(true);
+      await new Promise(resolve => setTimeout(resolve, OPPONENT_MOVE_DELAY));
+
+      // Get the next move using the updated move index
+      const { from: oppFrom, to: oppTo, promotion: oppPromotion } = 
+        extractMoveComponents(puzzle.solutionMovesUCI[newMoveIndex]);
+
+      await makeMove(oppFrom, oppTo, oppPromotion);
+      setCurrentMoveIndex(newMoveIndex + 1);
+      setIsOpponentMoving(false);
+    }
+  }, [
+    state.currentPuzzle,
+    isAutoSolving,
+    isOpponentMoving,
+    currentMoveIndex,
+    chessInstance,
+    makeMove,
+    handlePuzzleSuccess,
+    handlePuzzleFailure
+  ]);
 
   const isUserTurn = useCallback(() => {
     if (!state.currentPuzzle) return false;

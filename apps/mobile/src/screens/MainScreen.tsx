@@ -11,6 +11,7 @@ import { SessionStatusBar } from '../components/session/SessionStatusBar';
 import { puzzleService } from '../services/PuzzleService';
 import { playSound, SoundTypes } from '../utils/sounds';
 import { Puzzle } from '../models/PuzzleModel';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const MainScreen: React.FC = () => {
     const { theme } = useTheme();
@@ -20,22 +21,54 @@ export const MainScreen: React.FC = () => {
     const [_, setIsInteractingWithBoard] = useState(false);
     const [showDebugPanel, setShowDebugPanel] = useState(false);
     const [debugPuzzleId, setDebugPuzzleId] = useState('');
-    
+    const [hasStoredSession, setHasStoredSession] = useState(false);
+
     const isSessionActive = state.isSessionActive && state.currentPuzzle !== null;
-    
-    const handleFetchNewPuzzle = async () => {
+
+    // Add this useEffect to check for stored session on mount
+    useEffect(() => {
+        checkForStoredSession();
+    }, []);
+
+    const checkForStoredSession = async () => {
         try {
-            const currentPuzzle = state.currentPuzzle;
-            if (!currentPuzzle) {
-                return;
-            }
-            
-            // Start transition to new puzzle
+            const savedSession = await AsyncStorage.getItem('@chess_woodpecker/session');
+            setHasStoredSession(!!savedSession);
+        } catch (error) {
+            console.error('Failed to check for stored session:', error);
+        }
+    };
+
+    // Add this effect to monitor puzzle transitions
+    useEffect(() => {
+        if (state.currentPuzzle) {
+            console.log('Puzzle Transition:', {
+                puzzleId: state.currentPuzzle.id,
+                isLoading: state.isLoading,
+                isTransitioning: isTransitioningToPuzzle,
+                isPuzzleSetupComplete
+            });
+        }
+    }, [state.currentPuzzle, state.isLoading, isTransitioningToPuzzle, isPuzzleSetupComplete]);
+
+    const handleFetchNewPuzzle = async () => {
+        console.log('Fetching New Puzzle:', {
+            currentPuzzleId: state.currentPuzzle?.id,
+            isTransitioning: isTransitioningToPuzzle
+        });
+        
+        try {
             setIsTransitioningToPuzzle(true);
             setIsPuzzleSetupComplete(false);
             
             dispatch({ type: 'SET_LOADING', payload: true });
             const puzzle = await puzzleService.fetchRandomPuzzle();
+            
+            console.log('New Puzzle Fetched:', {
+                newPuzzleId: puzzle.id,
+                fen: puzzle.fen
+            });
+            
             dispatch({ type: 'SET_CURRENT_PUZZLE', payload: puzzle });
         } catch (error) {
             console.error('Failed to fetch new puzzle:', error);
@@ -112,8 +145,29 @@ export const MainScreen: React.FC = () => {
         }
     };
 
-    const handleResumeSession = () => {
-        dispatch({ type: 'RESUME_SESSION' });
+    const handleResumeSession = async () => {
+        try {
+            const savedSessionData = await AsyncStorage.getItem('@chess_woodpecker/session');
+            if (savedSessionData) {
+                const sessionState = JSON.parse(savedSessionData);
+                dispatch({ type: 'LOAD_STORED_SESSION', payload: sessionState });
+                // Start a new puzzle
+                const puzzle = await puzzleService.fetchRandomPuzzle();
+                dispatch({ type: 'SET_CURRENT_PUZZLE', payload: puzzle });
+            }
+        } catch (error) {
+            console.error('Failed to resume session:', error);
+        }
+    };
+
+    const handleClearSession = async () => {
+        try {
+            await AsyncStorage.removeItem('@chess_woodpecker/session');
+            setHasStoredSession(false);
+            console.log('Session cleared');
+        } catch (error) {
+            console.error('Failed to clear session:', error);
+        }
     };
 
     // Load a specific puzzle for debugging
@@ -191,7 +245,23 @@ export const MainScreen: React.FC = () => {
                     {showDebugPanel && (
                         <View style={[styles.debugPanel, { backgroundColor: theme.surface, borderColor: theme.border }]}>
                             <Text style={[styles.debugTitle, { color: theme.text }]}>Debug Panel</Text>
-                            <View style={styles.debugInputContainer}>
+                            
+                            {/* Session Debug Info */}
+                            <View style={styles.debugSection}>
+                                <Text style={[styles.debugText, { color: theme.text }]}>
+                                    Stored Session: {hasStoredSession ? 'Yes' : 'No'}
+                                </Text>
+                                <TouchableOpacity 
+                                    style={[styles.debugButton, { backgroundColor: theme.error }]}
+                                    onPress={handleClearSession}
+                                >
+                                    <Text style={styles.debugButtonText}>Clear Session</Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            {/* Load Specific Puzzle Section */}
+                            <View style={styles.debugSection}>
+                                <Text style={[styles.debugText, { color: theme.text }]}>Load Specific Puzzle:</Text>
                                 <TextInput
                                     style={[styles.debugInput, { 
                                         borderColor: theme.border,
@@ -214,7 +284,7 @@ export const MainScreen: React.FC = () => {
                     )}
                     
                     <View style={styles.buttonContainer}>
-                        {!isSessionActive ? (
+                        {!isSessionActive && (
                             <>
                                 <TouchableOpacity 
                                     style={[styles.button, { backgroundColor: theme.primary }]} 
@@ -226,8 +296,7 @@ export const MainScreen: React.FC = () => {
                                     </Text>
                                 </TouchableOpacity>
                                 
-                                {/* Show Resume button if there's a paused session */}
-                                {state.session.isPaused && (
+                                {hasStoredSession && (
                                     <TouchableOpacity 
                                         style={[styles.button, { backgroundColor: theme.secondary, marginTop: 12 }]} 
                                         onPress={handleResumeSession}
@@ -236,7 +305,7 @@ export const MainScreen: React.FC = () => {
                                     </TouchableOpacity>
                                 )}
                             </>
-                        ) : null}
+                        )}
                     </View>
                 </ScrollView>
                 
@@ -320,13 +389,21 @@ const styles = StyleSheet.create({
         marginTop: 8,
     },
     debugPanel: {
-        borderRadius: 8,
-        borderWidth: 1,
         margin: 16,
         padding: 16,
+        borderRadius: 8,
+        borderWidth: 1,
     },
     debugTitle: {
         fontSize: 16,
         fontWeight: 'bold',
+        marginBottom: 16,
+    },
+    debugSection: {
+        marginBottom: 16,
+    },
+    debugText: {
+        fontSize: 14,
+        marginBottom: 8,
     },
 });

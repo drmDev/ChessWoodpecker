@@ -91,40 +91,6 @@ export function moveToUCI(move: UserMove): string {
   return uci;
 }
 
-/**
- * Test-only function to help debug validation issues
- */
-export function debugValidateMove(
-  position: Chess,
-  userMove: UserMove,
-  solutionMoves: string[],
-  currentMoveIndex: number
-): string {
-  try {
-    const testPosition = new Chess(position.fen());
-    const moveResult = testPosition.move({
-      from: userMove.from,
-      to: userMove.to,
-      promotion: userMove.promotion
-    });
-
-    const userMoveUCI = moveToUCI(userMove);
-    const expectedMove = solutionMoves[currentMoveIndex];
-
-    return `
-      Debug info:
-      - Move result: ${moveResult ? 'legal' : 'illegal'}
-      - User move UCI: ${userMoveUCI}
-      - Expected move: ${expectedMove}
-      - Position FEN: ${position.fen()}
-      - Move details: ${JSON.stringify(userMove)}
-      ${moveResult ? `- Resulting position: ${testPosition.fen()}` : ''}
-    `;
-  } catch (error) {
-    return `Error during validation: ${error}`;
-  }
-}
-
 function isLegalMove(chess: Chess, userMove: { from: string; to: string; promotion?: string }): boolean {
   try {
     const moves = chess.moves({ verbose: true });

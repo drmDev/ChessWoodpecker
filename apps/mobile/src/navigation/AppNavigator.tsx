@@ -6,12 +6,14 @@ import { MainScreen } from '../screens/MainScreen';
 import { SessionSummaryScreen } from '../screens/SessionSummaryScreen';
 import { useTheme } from '../contexts/ThemeContext';
 import { TouchableOpacity } from 'react-native';
+import { DebugScreen } from '../screens/DebugScreen';
 
 // Define the tab navigator param list
 type TabParamList = {
   Home: undefined;
   Stats: undefined;
   TestBoard: undefined;
+  Debug: undefined;
 };
 
 const Tab = createBottomTabNavigator<TabParamList>();
@@ -47,6 +49,8 @@ export const AppNavigator: React.FC = () => {
               iconName = focused ? 'stats-chart' : 'stats-chart-outline';
             } else if (route.name === 'TestBoard') {
               iconName = focused ? 'test-analysis' : 'test-analysis-outline';
+            } else if (route.name === 'Debug') {
+              iconName = focused ? 'bug' : 'bug-outline';
             }
             return <Ionicons name={iconName as any} size={size} color={color} />;
           },
@@ -91,6 +95,19 @@ export const AppNavigator: React.FC = () => {
               </TouchableOpacity>
             ),
           })}
+        />
+        <Tab.Screen
+          name="Debug"
+          component={DebugScreen}
+          options={{
+            tabBarIcon: ({ focused, color, size }) => (
+              <Ionicons 
+                name={focused ? 'bug' : 'bug-outline'} 
+                size={size} 
+                color={color} 
+              />
+            ),
+          }}
         />
       </Tab.Navigator>
     </NavigationContainer>
