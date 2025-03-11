@@ -410,3 +410,20 @@ _temp/
 .cursor/
 
 .env
+
+# Android/IntelliJ
+.idea/
+android/app/build/
+android/app/debug/
+android/app/release/
+android/.gradle/
+android/build/
+android/gradle/
+android/local.properties
+android/.idea/
+android/*.iml
+android/.externalNativeBuild
+android/.cxx/
+android/captures/
+android/gradlew
+android/gradlew.bat
