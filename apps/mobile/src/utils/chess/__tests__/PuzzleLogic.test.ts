@@ -1,5 +1,11 @@
 import { Chess } from 'chess.js';
 import { extractMoveComponents, isPromotionMove, replayMoves, getMoveType } from '../PuzzleLogic';
+import { 
+  FEN_STARTING_POSITION, 
+  FEN_WHITE_PROMOTION_QUEEN_CHECK,
+  FEN_CAPTURE_POSITION,
+  FEN_CHECK_POSITION 
+} from '../../testing/chess-test-utils';
 
 describe('PuzzleLogic', () => {
   describe('extractMoveComponents', () => {
@@ -70,9 +76,8 @@ describe('PuzzleLogic', () => {
     });
 
     it('replays valid move sequence', () => {
-      const startPos = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
       const moves = ['e2e4', 'e7e5', 'g1f3'];
-      expect(replayMoves(chess, startPos, moves)).toBe(true);
+      expect(replayMoves(chess, FEN_STARTING_POSITION, moves)).toBe(true);
     });
 
     it('returns false for invalid move sequence', () => {
@@ -90,13 +95,13 @@ describe('PuzzleLogic', () => {
     });
 
     it('identifies capture moves', () => {
-      chess.load('rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 1');
+      chess.load(FEN_CAPTURE_POSITION);
       const moveResult = chess.move({ from: 'e4', to: 'd5' });
       expect(getMoveType(chess, moveResult!)).toBe('capture');
     });
 
     it('identifies check moves', () => {
-      chess.load('4k3/8/8/8/8/8/8/4Q1K1 w - - 0 1');
+      chess.load(FEN_CHECK_POSITION);
       const moveResult = chess.move({ from: 'e1', to: 'e7' });
       expect(getMoveType(chess, moveResult!)).toBe('check');
     });

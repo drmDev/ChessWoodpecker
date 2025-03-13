@@ -5,6 +5,7 @@ import { ChessPiece } from '../ChessPiece';
 import { Gesture } from 'react-native-gesture-handler';
 import Animated from 'react-native-reanimated';
 import { useChessBoard } from '../../../hooks/useChessBoard';
+import { FEN_STARTING_POSITION } from '../../../utils/testing/chess-test-utils';
 
 interface OrientableChessBoardProps {
   initialFen?: string;
@@ -19,7 +20,7 @@ interface OrientableChessBoardProps {
  * A custom chessboard component that supports orientation changes and drag-and-drop
  */
 const OrientableChessBoard: React.FC<OrientableChessBoardProps> = ({
-  initialFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+  initialFen = FEN_STARTING_POSITION,
   orientation = 'white',
   onMove,
   onDragStart,

@@ -1,11 +1,12 @@
 import { Chess } from 'chess.js';
 import { validatePuzzleMove } from '../PuzzleMoveValidator';
+import { FEN_WHITE_E4_PLAYED, FEN_CAPTURE_POSITION, FEN_CHECK_POSITION, FEN_CASTLING_POSITION, FEN_KNIGHT_CAPTURE_POSITION } from '../../testing/chess-test-utils';
 
 describe('PuzzleMoveValidator', () => {
   describe('validatePuzzleMove', () => {
     // Test Case 1: Basic correct move validation
     it('should validate a correct first move in the solution', () => {
-      const position = new Chess('r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 0 1');
+      const position = new Chess(FEN_CAPTURE_POSITION);
       const solutionMoves = ['d2d4', 'c6d4', 'f3d4']; // Example: White plays d4
       const userMove = { from: 'd2', to: 'd4' };
       
@@ -17,7 +18,7 @@ describe('PuzzleMoveValidator', () => {
 
     // Test Case 2: Incorrect move validation
     it('should invalidate an incorrect move', () => {
-      const position = new Chess('r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 0 1');
+      const position = new Chess(FEN_CAPTURE_POSITION);
       const solutionMoves = ['d2d4', 'c6d4', 'f3d4'];
       const userMove = { from: 'e4', to: 'e5' }; // Wrong move
       
@@ -29,7 +30,7 @@ describe('PuzzleMoveValidator', () => {
 
     // Test Case 3: Validate move in the middle of solution sequence
     it('should validate a correct move in the middle of the solution', () => {
-      const position = new Chess('r1bqkbnr/pppp1ppp/8/4p3/3nP3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 0 1');
+      const position = new Chess(FEN_KNIGHT_CAPTURE_POSITION);
       const solutionMoves = ['d2d4', 'c6d4', 'f3d4'];
       const userMove = { from: 'f3', to: 'd4' }; // White recaptures with knight
       
@@ -76,7 +77,7 @@ describe('PuzzleMoveValidator', () => {
 
     // Test Case 6: Validate complete puzzle solution
     it('should indicate when puzzle is complete', () => {
-      const position = new Chess('r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 0 1');
+      const position = new Chess(FEN_CAPTURE_POSITION);
       const solutionMoves = ['d2d4'];
       const userMove = { from: 'd2', to: 'd4' };
       
@@ -134,7 +135,7 @@ describe('PuzzleMoveValidator', () => {
       ['O-O', 'e1g1'],   // Kingside castle
       ['O-O-O', 'e1c1']  // Queenside castle
     ])('should validate legal %s castling', (notation, uciMove) => {
-      const position = new Chess('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq - 0 1');
+      const position = new Chess(FEN_CASTLING_POSITION);
       const solutionMoves = [uciMove];
       const [from, to] = [uciMove.slice(0, 2), uciMove.slice(2, 4)];
       const userMove = { from, to };

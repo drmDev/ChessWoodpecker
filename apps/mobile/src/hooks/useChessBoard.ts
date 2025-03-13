@@ -7,6 +7,7 @@ import { useChessAnimation } from './useChessAnimation';
 import { mapCoordinatesToSquare } from '../utils/chess/orientation-utils';
 import { playSound } from '../utils/sounds';
 import { triggerHaptic } from '../utils/haptics';
+import { FEN_STARTING_POSITION } from '../utils/testing/chess-test-utils';
 
 interface BoardPosition {
   [square: string]: {
@@ -55,7 +56,7 @@ const ANIMATION_CONFIG = {
  * Hook to manage chess board state and interactions
  */
 export function useChessBoard({
-  initialFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+  initialFen = FEN_STARTING_POSITION,
   orientation = 'white',
   onMove,
   onDragStart,

@@ -1,6 +1,7 @@
 import { renderHook, act } from '@testing-library/react-hooks';
 import { useChessBoard } from '../useChessBoard';
 import * as Haptics from 'expo-haptics';
+import { FEN_STARTING_POSITION } from '../../utils/testing/chess-test-utils';
 
 // Mock react-native-gesture-handler
 jest.mock('react-native-gesture-handler', () => {
@@ -94,7 +95,7 @@ jest.mock('../../utils/chess/orientation-utils', () => ({
 
 describe('useChessBoard', () => {
   const defaultProps = {
-    initialFen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+    initialFen: FEN_STARTING_POSITION,
     orientation: 'white' as const,
     onMove: jest.fn(),
     onDragStart: jest.fn(),
