@@ -29,6 +29,8 @@ interface PuzzleGameActions {
 const AUTO_SOLVE_MOVE_DELAY = 1000;
 const NEXT_PUZZLE_DELAY = 2000;
 const OPPONENT_MOVE_DELAY = 500;
+const FADE_TRANSITION_DURATION = 300;  // Match LoadingOverlay fade duration
+const PUZZLE_SETUP_BUFFER = 200;       // Additional buffer for puzzle setup
 
 /**
  * Custom hook that manages the puzzle game state and logic
@@ -100,16 +102,19 @@ export function usePuzzleGame(
       newPuzzleFen: puzzle.fen
     });
     
-    chessInstance.load(puzzle.fen);
-    setCurrentPosition(puzzle.fen);
-    setCurrentMoveIndex(0);
-    setIsOpponentMoving(false);
-    setIsAutoSolving(false);
+    // Add slight delay to ensure LoadingOverlay is visible before position changes
+    setTimeout(() => {
+      chessInstance.load(puzzle.fen);
+      setCurrentPosition(puzzle.fen);
+      setCurrentMoveIndex(0);
+      setIsOpponentMoving(false);
+      setIsAutoSolving(false);
 
-    console.log('After Reset:', {
-      currentPosition: puzzle.fen,
-      chessInstanceFen: chessInstance.fen()
-    });
+      console.log('After Reset:', {
+        currentPosition: puzzle.fen,
+        chessInstanceFen: chessInstance.fen()
+      });
+    }, PUZZLE_SETUP_BUFFER);
   }, [chessInstance]);
 
   const makeMove = useCallback(async (from: string, to: string, promotion?: string) => {
@@ -126,9 +131,7 @@ export function usePuzzleGame(
   }, [chessInstance]);
 
   const autoSolvePuzzle = useCallback(async () => {
-    if (!state.currentPuzzle) {
-      return;
-    }
+    if (!state.currentPuzzle) return;
 
     const puzzleId = state.currentPuzzle.id; // Store puzzle ID to check for changes
     const puzzle = state.currentPuzzle;
@@ -136,6 +139,9 @@ export function usePuzzleGame(
     setIsAutoSolving(true);
 
     try {
+      // Add delay before starting moves to allow for fade transition
+      await new Promise(resolve => setTimeout(resolve, FADE_TRANSITION_DURATION));
+      
       // Reset to initial position
       chessInstance.load(puzzle.fen);
       setCurrentPosition(puzzle.fen);
