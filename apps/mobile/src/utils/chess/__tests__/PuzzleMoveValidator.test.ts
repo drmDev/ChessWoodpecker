@@ -1,6 +1,16 @@
 import { Chess } from 'chess.js';
 import { validatePuzzleMove } from '../PuzzleMoveValidator';
-import { FEN_WHITE_E4_PLAYED, FEN_CAPTURE_POSITION, FEN_CHECK_POSITION, FEN_CASTLING_POSITION, FEN_KNIGHT_CAPTURE_POSITION } from '../../testing/chess-test-utils';
+import { 
+  FEN_STARTING_POSITION,
+  FEN_CAPTURE_POSITION, 
+  FEN_CASTLING_POSITION, 
+  FEN_KNIGHT_CAPTURE_POSITION,
+  FEN_WHITE_PROMOTION_CHECK,
+  FEN_PINNED_BISHOP,
+  FEN_CASTLING_RIGHTS_LOST,
+  FEN_CASTLING_THROUGH_CHECK,
+  FEN_PROMOTION_REQUIRED
+} from '../../testing/chess-test-utils';
 
 describe('PuzzleMoveValidator', () => {
   describe('validatePuzzleMove', () => {
@@ -48,7 +58,7 @@ describe('PuzzleMoveValidator', () => {
       ['b', false], // Bishop doesn't check
       ['n', false]  // Knight doesn't check
     ])('should validate promotion to %s correctly', (promotionPiece, givesCheck) => {
-      const position = new Chess('2k5/4P3/8/8/8/8/8/4K3 w - - 0 1');
+      const position = new Chess(FEN_WHITE_PROMOTION_CHECK);
       const solutionMoves = [`e7e8${promotionPiece}`];
       const userMove = { from: 'e7', to: 'e8', promotion: promotionPiece };
       
@@ -66,7 +76,7 @@ describe('PuzzleMoveValidator', () => {
 
     // Test Case 5: Handle invalid promotion piece
     it('should invalidate an incorrect promotion piece', () => {
-      const position = new Chess('2k5/4P3/8/8/8/8/8/4K3 w - - 0 1');
+      const position = new Chess(FEN_WHITE_PROMOTION_CHECK);
       const solutionMoves = ['e7e8q']; // Solution promotes to queen
       const userMove = { from: 'e7', to: 'e8', promotion: 'p' }; // Invalid piece type
       
@@ -90,8 +100,7 @@ describe('PuzzleMoveValidator', () => {
 
     // Test Case 7: Validate pinned piece cannot move
     it('should invalidate moves of a pinned piece', () => {
-      // Position: White bishop on e2 is pinned to white king on e1 by black queen on e8
-      const position = new Chess('k3q3/8/8/8/8/8/4B3/4K3 w - - 0 1');
+      const position = new Chess(FEN_PINNED_BISHOP);
       const solutionMoves = ['e2f3']; // This move would be check if the bishop weren't pinned
       const userMove = { from: 'e2', to: 'f3' };
       
@@ -121,7 +130,7 @@ describe('PuzzleMoveValidator', () => {
 
     // Test Case 8: Initial pawn two-square advance
     it('should validate initial pawn two-square advance', () => {
-      const position = new Chess('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq - 0 1');
+      const position = new Chess(FEN_STARTING_POSITION);
       const solutionMoves = ['d2d4'];
       const userMove = { from: 'd2', to: 'd4' };
       
@@ -147,8 +156,7 @@ describe('PuzzleMoveValidator', () => {
 
     // Test Case 10: Castling rights lost after rook move
     it('should invalidate kingside castle after rook move', () => {
-      // Position where kingside rook has moved (no 'K' in castling rights)
-      const position = new Chess('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/R3K1R1 w Qkq - 0 1');
+      const position = new Chess(FEN_CASTLING_RIGHTS_LOST);
       const solutionMoves = ['e1g1']; // Attempt kingside castle
       const userMove = { from: 'e1', to: 'g1' };
       
@@ -163,8 +171,7 @@ describe('PuzzleMoveValidator', () => {
 
     // Test Case 11: Castling through check
     it('should invalidate castling through check', () => {
-      // Position where black queen controls f1, making kingside castle illegal
-      const position = new Chess('rnb1kbnr/pppp1ppp/8/6q1/8/8/PPPPP2P/R3K2R w KQkq - 0 1');
+      const position = new Chess(FEN_CASTLING_THROUGH_CHECK);
       const solutionMoves = ['e1g1']; // Attempt kingside castle
       const userMove = { from: 'e1', to: 'g1' };
       
@@ -179,8 +186,7 @@ describe('PuzzleMoveValidator', () => {
 
     // Test Case 12: Required promotion move in solution
     it('should validate promotion move when required by solution', () => {
-      // Position where white must promote pawn to queen
-      const position = new Chess('8/4P3/8/8/8/k7/8/K7 w - - 0 1');
+      const position = new Chess(FEN_PROMOTION_REQUIRED);
       const solutionMoves = ['e7e8q']; // Solution requires queen promotion
       
       // Test with correct promotion
