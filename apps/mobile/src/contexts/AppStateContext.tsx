@@ -33,7 +33,12 @@ interface SessionState {
 }
 
 // Add new type definition
-export type PuzzleTransitionState = 'STABLE' | 'TRANSITIONING' | 'LOADING';
+export type PuzzleTransitionState = 
+    | 'STABLE' 
+    | 'TRANSITIONING' 
+    | 'LOADING' 
+    | 'RESETTING'
+    | 'AUTO_SOLVING';
 export type PuzzleSetupState = 'PRE_SETUP' | 'SETUP_IN_PROGRESS' | 'SETUP_COMPLETE';
 
 // Renamed from AppState to ChessAppState

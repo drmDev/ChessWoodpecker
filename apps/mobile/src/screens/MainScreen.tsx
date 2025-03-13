@@ -99,18 +99,30 @@ export const MainScreen: React.FC = () => {
     // Show loading overlay in these cases:
     // 1. During initial session start or between puzzles (isTransitioningToPuzzle)
     // 2. When puzzle is not fully set up yet
-    // 3. But only if a session is active
+    // 3. During reset and auto-solve states
+    // 4. But only if a session is active
     const shouldShowLoadingOverlay = (
         state.isSessionActive && (
             state.isLoading || 
             puzzleSetupState === 'PRE_SETUP' ||
-            puzzleSetupState === 'SETUP_IN_PROGRESS'
+            puzzleSetupState === 'SETUP_IN_PROGRESS' ||
+            state.puzzleTransitionState === 'RESETTING' ||
+            state.puzzleTransitionState === 'AUTO_SOLVING'
         )
     ) && !isAutoSolving;
 
     // Determine the appropriate loading message
     const getLoadingMessage = () => {
         if (state.isLoading) return 'Loading next puzzle...';
+        
+        if (state.puzzleTransitionState === 'RESETTING') {
+            return 'Incorrect move - Resetting puzzle...';
+        }
+        
+        if (state.puzzleTransitionState === 'AUTO_SOLVING') {
+            return 'Watch the solution...';
+        }
+        
         switch (puzzleSetupState) {
             case 'PRE_SETUP':
                 return 'Preparing puzzle...';

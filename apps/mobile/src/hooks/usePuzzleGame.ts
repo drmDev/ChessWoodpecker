@@ -310,10 +310,24 @@ export function usePuzzleGame(
     if (!state.currentPuzzle) return;
 
     try {
+      // Immediate feedback
       await Promise.all([
         playSound(SoundTypes.FAILURE),
         triggerHaptic('heavy')
       ]);
+
+      // Show the incorrect move for a moment before resetting
+      await new Promise(resolve => setTimeout(resolve, 800));
+
+      // Visual indication we're resetting
+      setTransitionState('RESETTING');
+      
+      // Reset to starting position with clear visual feedback
+      chessInstance.load(state.currentPuzzle.fen);
+      setCurrentPosition(state.currentPuzzle.fen);
+      
+      // Pause to let user see we've reset
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
       dispatch({
         type: 'RECORD_FAILED_PUZZLE',
@@ -323,6 +337,8 @@ export function usePuzzleGame(
         }
       });
 
+      // Now start auto-solve with clear indication
+      setTransitionState('AUTO_SOLVING');
       await autoSolvePuzzle();
     } catch (error) {
       console.error('Error in puzzle failure handling:', error);
