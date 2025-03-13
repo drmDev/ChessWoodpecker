@@ -2,19 +2,22 @@ import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
+import { PuzzleSetupState } from 'src/contexts/AppStateContext';
 
 interface LoadingOverlayProps {
   visible: boolean;
   message?: string;
   minDisplayTime?: number;
   fadeTransitionDuration?: number;
+  setupState: PuzzleSetupState;
 }
 
 export function LoadingOverlay({ 
   visible, 
-  message = 'Loading next puzzle...', 
+  message = 'Loading...', 
   minDisplayTime = 1000,
-  fadeTransitionDuration = 300
+  fadeTransitionDuration = 300,
+  setupState
 }: LoadingOverlayProps) {
   const { theme } = useTheme();
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -122,6 +125,44 @@ export function LoadingOverlay({
       scaleAnim.setValue(1);
     };
   }, [isDisplayed]);
+
+  // Add setup state-specific animations
+  useEffect(() => {
+    if (setupState === 'SETUP_IN_PROGRESS') {
+      // Enhance animations during setup
+      Animated.parallel([
+        Animated.sequence([
+          Animated.timing(scaleAnim, {
+            toValue: 1.2,
+            duration: 500,
+            easing: Easing.ease,
+            useNativeDriver: true
+          }),
+          Animated.timing(scaleAnim, {
+            toValue: 1,
+            duration: 500,
+            easing: Easing.ease,
+            useNativeDriver: true
+          })
+        ]),
+        Animated.loop(
+          Animated.sequence([
+            Animated.timing(rotateAnim, {
+              toValue: 1,
+              duration: 1000,
+              easing: Easing.linear,
+              useNativeDriver: true
+            }),
+            Animated.timing(rotateAnim, {
+              toValue: 0,
+              duration: 0,
+              useNativeDriver: true
+            })
+          ])
+        )
+      ]).start();
+    }
+  }, [setupState, scaleAnim, rotateAnim]);
 
   // Interpolate animations for smooth transitions
   const rotate = rotateAnim.interpolate({

@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { Chess } from 'chess.js';
 import { validatePuzzleMove, UserMove } from '../utils/chess/PuzzleMoveValidator';
 import { playSound, SoundTypes } from '../utils/sounds';
-import { PuzzleTransitionState, useAppState } from '../contexts/AppStateContext';
+import { PuzzleSetupState, PuzzleTransitionState, useAppState } from '../contexts/AppStateContext';
 import { Puzzle } from '../models/PuzzleModel';
 import { extractMoveComponents, isPromotionMove, replayMoves, getMoveType } from '../utils/chess/PuzzleLogic';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -18,6 +18,7 @@ interface PuzzleGameState {
   isUserTurn: boolean;
   isGameOver: boolean;
   isAutoSolving: boolean;
+  puzzleSetupState: PuzzleSetupState;
 }
 
 interface PuzzleGameActions {
@@ -53,32 +54,55 @@ export function usePuzzleGame(
     dispatch({ type: 'SET_PUZZLE_TRANSITION_STATE', payload: newState });
   }, [dispatch]);
 
+  // Add setup state management
+  const setPuzzleSetupState = useCallback((newState: PuzzleSetupState) => {
+    dispatch({ type: 'SET_PUZZLE_SETUP_STATE', payload: newState });
+  }, [dispatch]);
+
   // Reset game state when a new puzzle is loaded
   useEffect(() => {
     const puzzle = state.currentPuzzle;
     if (puzzle) {
-      chessInstance.load(puzzle.fen);
-      setCurrentPosition(puzzle.fen);
-      setCurrentMoveIndex(0);
-      setIsOpponentMoving(false);
-      setIsAutoSolving(false);
-      setLastMoveFrom(null);
-      setLastMoveTo(null);
-      setIsUserTurn(true);
-      setIsGameOver(false);
-      setTransitionState('STABLE');
+      // Start setup process
+      setPuzzleSetupState('PRE_SETUP');
+      
+      const setupPuzzle = async () => {
+        try {
+          setPuzzleSetupState('SETUP_IN_PROGRESS');
+          
+          // Reset chess instance
+          chessInstance.load(puzzle.fen);
+          setCurrentPosition(puzzle.fen);
+          
+          // Reset all game states
+          setCurrentMoveIndex(0);
+          setIsOpponentMoving(false);
+          setIsAutoSolving(false);
+          setLastMoveFrom(null);
+          setLastMoveTo(null);
+          setIsUserTurn(true);
+          setIsGameOver(false);
+          
+          // Add artificial delay for smooth transition
+          await new Promise(resolve => setTimeout(resolve, PUZZLE_SETUP_BUFFER));
+          
+          // Setup complete
+          setPuzzleSetupState('SETUP_COMPLETE');
+        } catch (error) {
+          console.error('Error during puzzle setup:', error);
+          // Reset to pre-setup on error
+          setPuzzleSetupState('PRE_SETUP');
+        }
+      };
+      
+      setupPuzzle();
     } else {
+      // Reset state when no puzzle is active
+      setPuzzleSetupState('PRE_SETUP');
       chessInstance.reset();
       setCurrentPosition(null);
-      setCurrentMoveIndex(0);
-      setIsOpponentMoving(false);
-      setIsAutoSolving(false);
-      setLastMoveFrom(null);
-      setLastMoveTo(null);
-      setIsUserTurn(true);
-      setIsGameOver(false);
     }
-  }, [state.currentPuzzle, chessInstance, setTransitionState]);
+  }, [state.currentPuzzle, chessInstance, setPuzzleSetupState]);
 
   const makeMove = useCallback(async (from: string, to: string, promotion?: string): Promise<boolean> => {
     const moveResult = chessInstance.move({ from, to, promotion });
@@ -217,6 +241,7 @@ export function usePuzzleGame(
   ]);
 
   const resetGame = useCallback((puzzle: Puzzle) => {
+    setPuzzleSetupState('PRE_SETUP');
     chessInstance.load(puzzle.fen);
     setCurrentPosition(puzzle.fen);
     setCurrentMoveIndex(0);
@@ -227,7 +252,7 @@ export function usePuzzleGame(
     setIsUserTurn(true);
     setIsGameOver(false);
     setTransitionState('STABLE');
-  }, [chessInstance, setTransitionState]);
+  }, [chessInstance, setTransitionState, setPuzzleSetupState]);
 
   const autoSolvePuzzle = useCallback(async () => {
     if (!state.currentPuzzle || isAutoSolving) return;
@@ -315,10 +340,11 @@ export function usePuzzleGame(
     isUserTurn,
     isGameOver,
     isAutoSolving,
+    puzzleSetupState: state.puzzleSetupState,
     // Actions
     handleMove,
     resetGame,
     makeOpponentMove,
-    autoSolvePuzzle
+    autoSolvePuzzle,
   };
 }

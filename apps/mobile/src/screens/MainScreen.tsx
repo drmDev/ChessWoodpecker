@@ -92,19 +92,33 @@ export const MainScreen: React.FC = () => {
         currentPosition, 
         handleMove,
         isOpponentMoving,
-        isAutoSolving
+        isAutoSolving,
+        puzzleSetupState
     } = usePuzzleGame(handleFetchNewPuzzle);
 
     // Show loading overlay in these cases:
     // 1. During initial session start or between puzzles (isTransitioningToPuzzle)
     // 2. When puzzle is not fully set up yet
     // 3. But only if a session is active
-    const shouldShowLoadingOverlay = ((state.isLoading || isTransitioningToPuzzle || !isPuzzleSetupComplete) && state.isSessionActive) && !isAutoSolving;
+    const shouldShowLoadingOverlay = (
+        state.isSessionActive && (
+            state.isLoading || 
+            puzzleSetupState === 'PRE_SETUP' ||
+            puzzleSetupState === 'SETUP_IN_PROGRESS'
+        )
+    ) && !isAutoSolving;
 
     // Determine the appropriate loading message
     const getLoadingMessage = () => {
-        if (isTransitioningToPuzzle) return 'Loading next puzzle...';
-        return 'Setting up puzzle...';
+        if (state.isLoading) return 'Loading next puzzle...';
+        switch (puzzleSetupState) {
+            case 'PRE_SETUP':
+                return 'Preparing puzzle...';
+            case 'SETUP_IN_PROGRESS':
+                return 'Setting up board position...';
+            default:
+                return 'Loading...';
+        }
     };
 
     // When currentPosition changes, it means the puzzle is set up
@@ -240,7 +254,7 @@ export const MainScreen: React.FC = () => {
                     contentContainerStyle={styles.contentContainer}
                     style={styles.content}
                 >
-                    {isSessionActive && state.currentPuzzle && (
+                    {isSessionActive && state.currentPuzzle && puzzleSetupState === 'SETUP_COMPLETE' && (
                         <View style={styles.boardContainer}>
                             <TurnIndicator isWhiteToMove={state.currentPuzzle.isWhiteToMove} />
                             <OrientableChessBoard
@@ -339,8 +353,9 @@ export const MainScreen: React.FC = () => {
                 
                 {/* Loading overlay for puzzle transitions */}
                 <LoadingOverlay 
-                    visible={shouldShowLoadingOverlay} 
+                    visible={shouldShowLoadingOverlay}
                     message={getLoadingMessage()}
+                    setupState={puzzleSetupState}
                 />
             </ErrorBoundary>
         </SafeAreaView>
