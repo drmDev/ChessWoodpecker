@@ -60,12 +60,26 @@ const OrientableChessBoard: React.FC<OrientableChessBoardProps> = ({
   }, [boardSize, updateBoardPosition]);
 
   const renderSquare = (row: number, col: number) => {
+    // Determine if the square is black or white based on its position
     const isBlack = (row + col) % 2 === 1;
     const squareColor = isBlack ? '#769656' : '#eeeed2';
 
     // Map visual position to algebraic notation based on orientation
+    // Calculate file (column) based on orientation
+    // White: file 'a' (0) to 'h' (7) from left to right
+    // Black: file 'h' (7) to 'a' (0) from left to right
+    // Example: col 2 in white orientation is 'c', in black it's 'f'
     const file = orientation === 'white' ? col : 7 - col;
+
+    // Calculate rank (row) based on orientation
+    // White: rank 8 (0) to 1 (7) from top to bottom
+    // Black: rank 1 (0) to 8 (7) from top to bottom
+    // Example: row 1 in white orientation is rank 7, in black it's rank 2
     const rank = orientation === 'white' ? 7 - row : row;
+
+    // Create algebraic notation for the square
+    // 97 is the ASCII code for 'a', so (97 + file) gives us 'a' to 'h'
+    // We add 1 to rank because chess ranks start at 1, not 0
     const square = String.fromCharCode(97 + file) + (rank + 1);
 
     // Determine if this square is part of the last move
