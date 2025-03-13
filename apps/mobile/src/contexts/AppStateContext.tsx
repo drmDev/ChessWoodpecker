@@ -32,6 +32,9 @@ interface SessionState {
     };
 }
 
+// Add new type definition
+export type PuzzleTransitionState = 'STABLE' | 'TRANSITIONING' | 'LOADING';
+
 // Renamed from AppState to ChessAppState
 interface ChessAppState {
     currentPuzzle: Puzzle | null;
@@ -44,6 +47,7 @@ interface ChessAppState {
     sessionStartTime: number | null;
     sessionCompletedTime: number | null;
     totalPuzzlesInSession: number;
+    puzzleTransitionState: PuzzleTransitionState;
 }
 
 // Define action types
@@ -61,7 +65,8 @@ type Action =
     | { type: 'LOAD_STORED_SESSION'; payload: Partial<ChessAppState> }
     | { type: 'SET_TOTAL_PUZZLES'; payload: number }
     | { type: 'INCREMENT_PUZZLES_SOLVED' }
-    | { type: 'INCREMENT_PUZZLES_ATTEMPTED' };
+    | { type: 'INCREMENT_PUZZLES_ATTEMPTED' }
+    | { type: 'SET_PUZZLE_TRANSITION_STATE'; payload: PuzzleTransitionState };
 
 // Create context with renamed type
 const AppStateContext = createContext<{
@@ -94,6 +99,7 @@ const initialState: ChessAppState = {
     sessionStartTime: null,
     sessionCompletedTime: null,
     totalPuzzlesInSession: 200, // Default value, will be updated when session is initialized
+    puzzleTransitionState: 'STABLE',
 };
 
 // Helper function to update category counts
@@ -302,7 +308,13 @@ function appReducer(state: ChessAppState, action: Action): ChessAppState {
                 ...state,
                 puzzlesAttempted: state.puzzlesAttempted + 1,
             };
-            
+
+        case 'SET_PUZZLE_TRANSITION_STATE':
+            return {
+                ...state,
+                puzzleTransitionState: action.payload
+            };
+
         default:
             return state;
     }

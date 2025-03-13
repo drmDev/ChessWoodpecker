@@ -1,123 +1,86 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Chess } from 'chess.js';
-import { validatePuzzleMove } from '../utils/chess/PuzzleMoveValidator';
+import { validatePuzzleMove, UserMove } from '../utils/chess/PuzzleMoveValidator';
 import { playSound, SoundTypes } from '../utils/sounds';
-import { useAppState } from '../contexts/AppStateContext';
+import { PuzzleTransitionState, useAppState } from '../contexts/AppStateContext';
 import { Puzzle } from '../models/PuzzleModel';
 import { extractMoveComponents, isPromotionMove, replayMoves, getMoveType } from '../utils/chess/PuzzleLogic';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { triggerHaptic } from '../utils/haptics';
 
+
 interface PuzzleGameState {
   currentPosition: string | null;
   currentMoveIndex: number;
-  onPuzzleComplete: () => void;
   isOpponentMoving: boolean;
+  lastMoveFrom: string | null;
+  lastMoveTo: string | null;
   isUserTurn: boolean;
   isGameOver: boolean;
   isAutoSolving: boolean;
 }
 
 interface PuzzleGameActions {
-  handleMove: (from: string, to: string) => void;
+  handleMove: (from: string, to: string, promotion?: string) => Promise<void>;
   resetGame: (puzzle: Puzzle) => void;
-  makeOpponentMove: () => Promise<void>;
+  makeOpponentMove: (moveIndex: number) => Promise<void>;
   autoSolvePuzzle: () => Promise<void>;
 }
 
-// Delay between moves during auto-solve (in milliseconds)
 const AUTO_SOLVE_MOVE_DELAY = 1000;
 const NEXT_PUZZLE_DELAY = 2000;
 const OPPONENT_MOVE_DELAY = 500;
-const FADE_TRANSITION_DURATION = 300;  // Match LoadingOverlay fade duration
-const PUZZLE_SETUP_BUFFER = 200;       // Additional buffer for puzzle setup
+const PUZZLE_SETUP_BUFFER = 200;
 
-/**
- * Custom hook that manages the puzzle game state and logic
- * Handles move validation, execution, and progression through the puzzle
- */
 export function usePuzzleGame(
   onPuzzleComplete: () => void
 ): PuzzleGameState & PuzzleGameActions {
   const { state, dispatch } = useAppState();
-  const [chessInstance] = useState(() => {
-    return new Chess();
-  });
+  const [chessInstance] = useState(() => new Chess());
+  
+  // State management
   const [currentPosition, setCurrentPosition] = useState<string | null>(null);
   const [currentMoveIndex, setCurrentMoveIndex] = useState(0);
   const [isOpponentMoving, setIsOpponentMoving] = useState(false);
+  const [lastMoveFrom, setLastMoveFrom] = useState<string | null>(null);
+  const [lastMoveTo, setLastMoveTo] = useState<string | null>(null);
+  const [isUserTurn, setIsUserTurn] = useState(true);
+  const [isGameOver, setIsGameOver] = useState(false);
   const [isAutoSolving, setIsAutoSolving] = useState(false);
 
-  // Add debug logging for state changes
-  useEffect(() => {
-    if (state.currentPuzzle) {
-      console.log('Puzzle State Change:', {
-        puzzleId: state.currentPuzzle.id,
-        fen: state.currentPuzzle.fen,
-        currentPosition,
-        currentMoveIndex,
-        chessInstanceFen: chessInstance.fen(),
-        isAutoSolving,
-        isOpponentMoving
-      });
-    }
-  }, [state.currentPuzzle, currentPosition, currentMoveIndex]);
+  // Helper function to manage transition states
+  const setTransitionState = useCallback((newState: PuzzleTransitionState) => {
+    dispatch({ type: 'SET_PUZZLE_TRANSITION_STATE', payload: newState });
+  }, [dispatch]);
 
-  // Reset game state when a new puzzle is loaded or session ends
+  // Reset game state when a new puzzle is loaded
   useEffect(() => {
     const puzzle = state.currentPuzzle;
     if (puzzle) {
-      chessInstance.load(puzzle.fen);
-      // Update all state synchronously to avoid intermediate states
-      const newState = {
-        position: puzzle.fen,
-        moveIndex: 0,
-        isOpponentMoving: false,
-        isAutoSolving: false
-      };
-      setCurrentPosition(newState.position);
-      setCurrentMoveIndex(newState.moveIndex);
-      setIsOpponentMoving(newState.isOpponentMoving);
-      setIsAutoSolving(newState.isAutoSolving);
-    } else {
-      chessInstance.reset(); // Reset to initial position
-      // Update all state synchronously to avoid intermediate states
-      const newState = {
-        position: null,
-        moveIndex: 0,
-        isOpponentMoving: false,
-        isAutoSolving: false
-      };
-      setCurrentPosition(newState.position);
-      setCurrentMoveIndex(newState.moveIndex);
-      setIsOpponentMoving(newState.isOpponentMoving);
-      setIsAutoSolving(newState.isAutoSolving);
-    }
-  }, [state.currentPuzzle]);
-
-  const resetGame = useCallback((puzzle: Puzzle) => {
-    console.log('Resetting Game:', {
-      puzzleId: puzzle.id,
-      beforeResetFen: chessInstance.fen(),
-      newPuzzleFen: puzzle.fen
-    });
-    
-    // Add slight delay to ensure LoadingOverlay is visible before position changes
-    setTimeout(() => {
       chessInstance.load(puzzle.fen);
       setCurrentPosition(puzzle.fen);
       setCurrentMoveIndex(0);
       setIsOpponentMoving(false);
       setIsAutoSolving(false);
+      setLastMoveFrom(null);
+      setLastMoveTo(null);
+      setIsUserTurn(true);
+      setIsGameOver(false);
+      setTransitionState('STABLE');
+    } else {
+      chessInstance.reset();
+      setCurrentPosition(null);
+      setCurrentMoveIndex(0);
+      setIsOpponentMoving(false);
+      setIsAutoSolving(false);
+      setLastMoveFrom(null);
+      setLastMoveTo(null);
+      setIsUserTurn(true);
+      setIsGameOver(false);
+    }
+  }, [state.currentPuzzle, chessInstance, setTransitionState]);
 
-      console.log('After Reset:', {
-        currentPosition: puzzle.fen,
-        chessInstanceFen: chessInstance.fen()
-      });
-    }, PUZZLE_SETUP_BUFFER);
-  }, [chessInstance]);
-
-  const makeMove = useCallback(async (from: string, to: string, promotion?: string) => {
+  const makeMove = useCallback(async (from: string, to: string, promotion?: string): Promise<boolean> => {
     const moveResult = chessInstance.move({ from, to, promotion });
     if (!moveResult) {
       return false;
@@ -127,268 +90,235 @@ export function usePuzzleGame(
     await playSound(moveType);
 
     setCurrentPosition(chessInstance.fen());
+    setLastMoveFrom(from);
+    setLastMoveTo(to);
     return true;
   }, [chessInstance]);
 
-  const autoSolvePuzzle = useCallback(async () => {
-    if (!state.currentPuzzle) return;
+  const makeOpponentMove = useCallback(async (moveIndex: number) => {
+    console.log('makeOpponentMove called:', {
+      hasPuzzle: !!state.currentPuzzle,
+      moveIndex,
+      solutionMoves: state.currentPuzzle?.solutionMovesUCI,
+      isOpponentMoving,
+      isUserTurn
+    });
 
-    const puzzleId = state.currentPuzzle.id; // Store puzzle ID to check for changes
-    const puzzle = state.currentPuzzle;
+    if (!state.currentPuzzle || moveIndex >= state.currentPuzzle.solutionMovesUCI.length) {
+      console.log('Cannot make opponent move - invalid state');
+      setIsUserTurn(true);
+      setIsOpponentMoving(false);
+      return;
+    }
 
-    setIsAutoSolving(true);
+    setIsOpponentMoving(true);
+    setIsUserTurn(false);
 
     try {
-      // Add delay before starting moves to allow for fade transition
-      await new Promise(resolve => setTimeout(resolve, FADE_TRANSITION_DURATION));
+      await new Promise(resolve => setTimeout(resolve, OPPONENT_MOVE_DELAY));
       
-      // Reset to initial position
+      const move = state.currentPuzzle.solutionMovesUCI[moveIndex];
+      console.log('Opponent making move:', move, {moveIndex});
+      
+      const { from, to, promotion } = extractMoveComponents(move);
+      
+      const moveSuccess = await makeMove(from, to, promotion);
+      console.log('Opponent move result:', { moveSuccess, move });
+
+      if (moveSuccess) {
+        setCurrentMoveIndex(moveIndex + 1);
+      } else {
+        console.error('Opponent move failed:', move);
+      }
+    } catch (error) {
+      console.error('Error in makeOpponentMove:', error);
+    } finally {
+      setIsOpponentMoving(false);
+      setIsUserTurn(true);
+      console.log('Opponent move completed, states reset');
+    }
+  }, [state.currentPuzzle, makeMove]);
+
+  const handleMove = useCallback(async (from: string, to: string, promotion?: string) => {
+    console.log('handleMove called with:', { 
+      from, 
+      to, 
+      promotion,
+      isOpponentMoving,
+      isUserTurn,
+      currentMoveIndex
+    });
+    
+    if (!state.currentPuzzle || isOpponentMoving || isAutoSolving || !isUserTurn) {
+      return;
+    }
+
+    // Check if this move requires promotion
+    const needsPromotion = isPromotionMove(chessInstance, from, to);
+    
+    // For promotion moves, always assume queen promotion in puzzles
+    // since that's typically the correct choice
+    const effectivePromotion = needsPromotion ? (promotion || 'q') : undefined;
+    
+    const userMove: UserMove = {
+      from,
+      to,
+      promotion: effectivePromotion
+    };
+
+    console.log('Validating move:', {
+      userMove,
+      currentMoveIndex,
+      expectedMove: state.currentPuzzle.solutionMovesUCI[currentMoveIndex]
+    });
+
+    const validationResult = validatePuzzleMove(
+      chessInstance,
+      userMove,
+      state.currentPuzzle.solutionMovesUCI,
+      currentMoveIndex
+    );
+
+    if (validationResult.isValid) {
+      console.log('Move is valid, executing...', {
+        currentMoveIndex,
+        totalMoves: state.currentPuzzle.solutionMovesUCI.length
+      });
+      
+      await makeMove(from, to, effectivePromotion);
+      const nextMoveIndex = currentMoveIndex + 1;
+      setCurrentMoveIndex(nextMoveIndex);
+      
+      if (nextMoveIndex >= state.currentPuzzle.solutionMovesUCI.length) {
+        console.log('Puzzle completed successfully');
+        setIsGameOver(true);
+        await handlePuzzleSuccess();
+      } else {
+        console.log('Initiating opponent move...', {
+          nextMoveIndex,
+          nextExpectedMove: state.currentPuzzle.solutionMovesUCI[nextMoveIndex]
+        });
+        setIsUserTurn(false);
+        await makeOpponentMove(nextMoveIndex);
+      }
+    } else {
+      console.log('Move is invalid, handling failure');
+      await handlePuzzleFailure();
+    }
+  }, [
+    state.currentPuzzle,
+    isOpponentMoving,
+    isAutoSolving,
+    isUserTurn,
+    currentMoveIndex,
+    makeMove,
+    makeOpponentMove,
+    chessInstance
+  ]);
+
+  const resetGame = useCallback((puzzle: Puzzle) => {
+    chessInstance.load(puzzle.fen);
+    setCurrentPosition(puzzle.fen);
+    setCurrentMoveIndex(0);
+    setIsOpponentMoving(false);
+    setIsAutoSolving(false);
+    setLastMoveFrom(null);
+    setLastMoveTo(null);
+    setIsUserTurn(true);
+    setIsGameOver(false);
+    setTransitionState('STABLE');
+  }, [chessInstance, setTransitionState]);
+
+  const autoSolvePuzzle = useCallback(async () => {
+    if (!state.currentPuzzle || isAutoSolving) return;
+
+    setIsAutoSolving(true);
+    setTransitionState('TRANSITIONING');
+
+    try {
+      const puzzle = state.currentPuzzle;
       chessInstance.load(puzzle.fen);
       setCurrentPosition(puzzle.fen);
       setCurrentMoveIndex(0);
 
-      // Play through each move with delay
-      for (let i = 0; i < puzzle.solutionMovesUCI.length; i++) {
-        // Check if puzzle has changed during auto-solve
-        if (!state.currentPuzzle || state.currentPuzzle.id !== puzzleId) {
-          break;
-        }
-
-        await new Promise(resolve => setTimeout(resolve, AUTO_SOLVE_MOVE_DELAY));
-
-        // Check again after delay
-        if (!state.currentPuzzle || state.currentPuzzle.id !== puzzleId) {
-          break;
-        }
-
-        const { from, to, promotion } = extractMoveComponents(puzzle.solutionMovesUCI[i]);
-        await makeMove(from, to, promotion);
-        setCurrentMoveIndex(i + 1);
-      }
-
-      // Only proceed with delay if puzzle hasn't changed
-      if (state.currentPuzzle && state.currentPuzzle.id === puzzleId) {
-        await new Promise(resolve => setTimeout(resolve, NEXT_PUZZLE_DELAY));
-      }
-    } catch (error) {
-      console.error(`Error during auto-solve:`, error);
-    } finally {
-      setIsAutoSolving(false);
-
-      // Only call onPuzzleComplete if the puzzle hasn't changed
-      if (state.currentPuzzle && state.currentPuzzle.id === puzzleId) {
-        onPuzzleComplete();
-      }
-    }
-  }, [state.currentPuzzle, chessInstance, makeMove, onPuzzleComplete]);
-
-  const handlePuzzleSuccess = useCallback(async () => {
-    console.log('Puzzle Success:', {
-      puzzleId: state.currentPuzzle?.id,
-      currentFen: chessInstance.fen(),
-      moveIndex: currentMoveIndex
-    });
-    
-    if (!state.currentPuzzle) {
-      return;
-    }
-
-    // Record the successful puzzle attempt
-    dispatch({
-      type: 'RECORD_SUCCESSFUL_PUZZLE',
-      payload: {
-        id: state.currentPuzzle.id,
-        theme: state.currentPuzzle.theme || 'Uncategorized'
-      }
-    });
-
-    try {
-      // Save session after recording success
-      await AsyncStorage.setItem('@chess_woodpecker/session', JSON.stringify(state.session));
-      console.log('Session saved after successful puzzle');
-    } catch (error) {
-      console.error('Failed to save session after successful puzzle:', error);
-    }
-
-    // Complete the puzzle
-    onPuzzleComplete();
-  }, [onPuzzleComplete, state.currentPuzzle, state.session, dispatch]);
-
-  const handlePuzzleFailure = useCallback(async () => {
-    if (!state.currentPuzzle) {
-      return;
-    }
-
-    console.log('Puzzle Failure:', {
-      puzzleId: state.currentPuzzle?.id,
-      currentFen: chessInstance.fen(),
-      moveIndex: currentMoveIndex
-    });
-
-    // Play failure sound and heavy haptic feedback
-    await Promise.all([
-      playSound(SoundTypes.FAILURE),
-      triggerHaptic('heavy')
-    ]);
-
-    // Record the failed puzzle attempt
-    dispatch({
-      type: 'RECORD_FAILED_PUZZLE',
-      payload: {
-        id: state.currentPuzzle.id,
-        theme: state.currentPuzzle.theme || 'Uncategorized'
-      }
-    });
-
-    // Reset to initial position
-    const puzzle = state.currentPuzzle;
-    chessInstance.load(puzzle.fen);
-    setCurrentPosition(puzzle.fen);
-    setCurrentMoveIndex(0);
-
-    // Auto-solve to show correct solution
-    setIsAutoSolving(true);
-
-    try {
-      // Play through each move with delay
       for (const move of puzzle.solutionMovesUCI) {
         await new Promise(resolve => setTimeout(resolve, AUTO_SOLVE_MOVE_DELAY));
         const { from, to, promotion } = extractMoveComponents(move);
         await makeMove(from, to, promotion);
       }
 
-      // Wait before loading next puzzle
       await new Promise(resolve => setTimeout(resolve, NEXT_PUZZLE_DELAY));
-    } catch (error) {
-      console.error('Error during auto-solve after failure:', error);
+      setTransitionState('LOADING');
+      onPuzzleComplete();
     } finally {
       setIsAutoSolving(false);
-      onPuzzleComplete(); // Move to next puzzle
     }
-  }, [state.currentPuzzle, chessInstance, makeMove, dispatch, onPuzzleComplete, currentMoveIndex]);
+  }, [state.currentPuzzle, chessInstance, makeMove, onPuzzleComplete, setTransitionState]);
 
-  const handleMove = useCallback(async (from: string, to: string) => {
-    console.log('Move Attempt:', {
-      from,
-      to,
-      isAutoSolving,
-      isOpponentMoving,
-      currentFen: chessInstance.fen(),
-      expectedFen: state.currentPuzzle?.fen,
-      moveIndex: currentMoveIndex
-    });
+  const handlePuzzleSuccess = useCallback(async () => {
+    if (!state.currentPuzzle) return;
 
-    if (!state.currentPuzzle || isAutoSolving || isOpponentMoving) {
-      console.log('Move rejected - state check:', {
-        hasPuzzle: !!state.currentPuzzle,
-        isAutoSolving,
-        isOpponentMoving
+    setTransitionState('TRANSITIONING');
+
+    try {
+      await playSound(SoundTypes.SUCCESS);
+      
+      dispatch({
+        type: 'RECORD_SUCCESSFUL_PUZZLE',
+        payload: {
+          id: state.currentPuzzle.id,
+          theme: state.currentPuzzle.theme || 'Uncategorized'
+        }
       });
-      return;
+
+      await AsyncStorage.setItem('@chess_woodpecker/session', JSON.stringify(state.session));
+      
+      setTransitionState('LOADING');
+      onPuzzleComplete();
+    } catch (error) {
+      console.error('Error in puzzle success handling:', error);
+      setTransitionState('STABLE');
     }
+  }, [state.currentPuzzle, state.session, dispatch, setTransitionState, onPuzzleComplete]);
 
-    const puzzle = state.currentPuzzle;
+  const handlePuzzleFailure = useCallback(async () => {
+    if (!state.currentPuzzle) return;
 
-    // Debug the current state
-    console.log('Attempting move:', {
-      from,
-      to,
-      currentMoveIndex,
-      currentFen: chessInstance.fen()
-    });
+    try {
+      await Promise.all([
+        playSound(SoundTypes.FAILURE),
+        triggerHaptic('heavy')
+      ]);
 
-    // Load current position and replay moves
-    if (!replayMoves(chessInstance, puzzle.fen, puzzle.solutionMovesUCI.slice(0, currentMoveIndex))) {
-      console.error('Failed to replay moves to current position', {
-        puzzleFen: puzzle.fen,
-        previousMoves: puzzle.solutionMovesUCI.slice(0, currentMoveIndex)
+      dispatch({
+        type: 'RECORD_FAILED_PUZZLE',
+        payload: {
+          id: state.currentPuzzle.id,
+          theme: state.currentPuzzle.theme || 'Uncategorized'
+        }
       });
-      return;
+
+      await autoSolvePuzzle();
+    } catch (error) {
+      console.error('Error in puzzle failure handling:', error);
+      setTransitionState('STABLE');
     }
-
-    // Validate the move
-    const shouldPromote = isPromotionMove(chessInstance, from, to);
-    const result = validatePuzzleMove(
-      chessInstance,
-      { from, to, promotion: shouldPromote ? 'q' : undefined },
-      puzzle.solutionMovesUCI,
-      currentMoveIndex
-    );
-
-    console.log('Move validation result:', {
-      isValid: result.isValid,
-      isComplete: result.isComplete,
-      expectedMove: puzzle.solutionMovesUCI[currentMoveIndex]
-    });
-
-    if (!result.isValid) {
-      console.log('Invalid move:', {
-        attempted: { from, to },
-        expected: puzzle.solutionMovesUCI[currentMoveIndex]
-      });
-      await handlePuzzleFailure();
-      return;
-    }
-
-    // Make the user's move
-    const moveSuccess = await makeMove(from, to, shouldPromote ? 'q' : undefined);
-    if (!moveSuccess) {
-      console.error('Failed to make move despite validation passing');
-      return;
-    }
-
-    const newMoveIndex = currentMoveIndex + 1;
-    setCurrentMoveIndex(newMoveIndex);
-
-    if (result.isComplete) {
-      playSound('success');
-      handlePuzzleSuccess();
-    } else {
-      // Make opponent's move after a short delay
-      setIsOpponentMoving(true);
-      await new Promise(resolve => setTimeout(resolve, OPPONENT_MOVE_DELAY));
-
-      // Get the next move using the updated move index
-      const { from: oppFrom, to: oppTo, promotion: oppPromotion } = 
-        extractMoveComponents(puzzle.solutionMovesUCI[newMoveIndex]);
-
-      await makeMove(oppFrom, oppTo, oppPromotion);
-      setCurrentMoveIndex(newMoveIndex + 1);
-      setIsOpponentMoving(false);
-    }
-  }, [
-    state.currentPuzzle,
-    isAutoSolving,
-    isOpponentMoving,
-    currentMoveIndex,
-    chessInstance,
-    makeMove,
-    handlePuzzleSuccess,
-    handlePuzzleFailure
-  ]);
-
-  const isUserTurn = useCallback(() => {
-    if (!state.currentPuzzle) return false;
-    if (currentMoveIndex === 0) return true;
-    return (currentMoveIndex % 2 === 0) === state.currentPuzzle.isWhiteToMove;
-  }, [currentMoveIndex, state.currentPuzzle]);
-
-  const isGameOver = useCallback(() => {
-    if (!state.currentPuzzle) return false;
-    return currentMoveIndex >= state.currentPuzzle.solutionMovesUCI.length;
-  }, [currentMoveIndex, state.currentPuzzle]);
+  }, [state.currentPuzzle, dispatch, autoSolvePuzzle, setTransitionState]);
 
   return {
+    // State
     currentPosition,
     currentMoveIndex,
+    isOpponentMoving,
+    lastMoveFrom,
+    lastMoveTo,
+    isUserTurn,
+    isGameOver,
+    isAutoSolving,
+    // Actions
     handleMove,
     resetGame,
-    onPuzzleComplete,
-    isOpponentMoving,
-    makeOpponentMove: async () => {}, // Keep for interface compatibility but no longer used
-    autoSolvePuzzle,
-    isUserTurn: isUserTurn(),
-    isGameOver: isGameOver(),
-    isAutoSolving,
+    makeOpponentMove,
+    autoSolvePuzzle
   };
 }
