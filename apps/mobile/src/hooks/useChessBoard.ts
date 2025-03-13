@@ -2,10 +2,12 @@ import { useRef, useCallback, useState, useEffect } from 'react';
 import { Chess } from 'chess.js';
 import { Dimensions } from 'react-native';
 import { Gesture } from 'react-native-gesture-handler';
-import { useSharedValue, withTiming, runOnJS, useAnimatedStyle, Easing } from 'react-native-reanimated';
+import { useAnimatedStyle, Easing } from 'react-native-reanimated';
+import { useChessAnimation } from './useChessAnimation';
 import { mapCoordinatesToSquare } from '../utils/chess/orientation-utils';
 import { playSound } from '../utils/sounds';
 import { triggerHaptic } from '../utils/haptics';
+import { FEN_STARTING_POSITION } from '../utils/testing/chess-test-utils';
 
 interface BoardPosition {
   [square: string]: {
@@ -54,7 +56,7 @@ const ANIMATION_CONFIG = {
  * Hook to manage chess board state and interactions
  */
 export function useChessBoard({
-  initialFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+  initialFen = FEN_STARTING_POSITION,
   orientation = 'white',
   onMove,
   onDragStart,
@@ -73,12 +75,11 @@ export function useChessBoard({
   // Ref to track board position
   const boardPositionRef = useRef({ x: 0, y: 0 });
 
-  // Animation values
-  const animX = useSharedValue(0);
-  const animY = useSharedValue(0);
-  const animOpacity = useSharedValue(1);
-  const animScale = useSharedValue(1);
-  const animElevation = useSharedValue(1);
+  const {
+    animatedStyle,
+    startDragAnimation,
+    endDragAnimation,
+  } = useChessAnimation(squareSize);
 
   const updateBoardPosition = useCallback((position: { x: number; y: number }) => {
     boardPositionRef.current = position;
@@ -121,26 +122,6 @@ export function useChessBoard({
   useEffect(() => {
     updatePositionFromChess();
   }, [orientation]);
-
-  const animatedStyle = useAnimatedStyle(() => {
-    return {
-      position: 'absolute',
-      width: squareSize,
-      height: squareSize,
-      transform: [
-        { translateX: animX.value },
-        { translateY: animY.value },
-        { scale: animScale.value }
-      ],
-      opacity: animOpacity.value,
-      zIndex: 10,
-      elevation: animElevation.value,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: animElevation.value / 2 },
-      shadowOpacity: 0.3,
-      shadowRadius: animElevation.value,
-    };
-  }, [squareSize]);
 
   // Update the position state from the chess instance
   const updatePositionFromChess = useCallback(() => {
@@ -225,6 +206,7 @@ export function useChessBoard({
       .runOnJS(true)  // Run all callbacks on JS thread - critical for proper gesture handling
       .onBegin(() => {
         setDraggedPiece({ square, piece });
+        startDragAnimation();
         triggerHaptic('light');
         if (onDragStart) {
           onDragStart();
@@ -250,6 +232,7 @@ export function useChessBoard({
           }
         }
 
+        endDragAnimation();
         setDraggedPiece(null);
         if (onDragEnd) {
           onDragEnd();

@@ -1,6 +1,7 @@
 import { puzzleService } from '../PuzzleService';
 import { PuzzleCacheService } from '../PuzzleCacheService';
 import { Puzzle } from '../../models/PuzzleModel';
+import { FEN_AFTER_NF3 } from '../../utils/testing/chess-test-utils';
 
 // Mock the default collection
 jest.mock('../../../assets/puzzles/default-collection.json', () => ({
@@ -35,7 +36,7 @@ describe('PuzzleService', () => {
     initialPly: 4,
     solutionMovesUCI: ['d2d4', 'e5d4'],
     solutionMovesSAN: ['d4', 'dxe4'],
-    fen: 'rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2',
+    fen: FEN_AFTER_NF3,
     isWhiteToMove: true,
     attempts: 0
   };

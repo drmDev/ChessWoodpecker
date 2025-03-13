@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PuzzleCacheService } from '../PuzzleCacheService';
 import { Puzzle } from '../../models/PuzzleModel';
+import { FEN_AFTER_E4_E5 } from '../../utils/testing/chess-test-utils';
 
 // Mock AsyncStorage
 jest.mock('@react-native-async-storage/async-storage', () => ({
@@ -47,7 +48,7 @@ describe('PuzzleCacheService', () => {
   const mockPuzzle: Puzzle = {
     id: 'test123',
     pgn: '1. e4 e5',
-    fen: 'rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2',
+    fen: FEN_AFTER_E4_E5,
     theme: 'opening',
     initialPly: 2,
     isWhiteToMove: true,

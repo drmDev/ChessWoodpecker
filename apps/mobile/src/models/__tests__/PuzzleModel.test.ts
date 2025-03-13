@@ -7,6 +7,13 @@ import {
   processPuzzleData,
   BackendPuzzleResponse
 } from '../PuzzleModel';
+import {
+  FEN_STARTING_POSITION,
+  FEN_AFTER_NF3,
+  FEN_QUEEN_PROMOTION_CHECK,
+  FEN_KNIGHT_PROMOTION_CHECK,
+  FEN_PROMOTION_NO_CHECK
+} from '../../utils/testing/chess-test-utils';
 
 describe('PuzzleModel', () => {
   describe('isValidUciMove', () => {
@@ -31,7 +38,7 @@ describe('PuzzleModel', () => {
     let chess: Chess;
 
     beforeEach(() => {
-      chess = new Chess();
+      chess = new Chess(FEN_STARTING_POSITION);
     });
 
     it('should convert valid UCI moves to SAN', () => {
@@ -41,20 +48,17 @@ describe('PuzzleModel', () => {
     });
 
     it('should handle queen promotion with check', () => {
-      // Position where queen promotion gives check
-      const promotionPosition = new Chess('k7/1P6/8/8/8/8/8/K7 w - - 0 1');
+      const promotionPosition = new Chess(FEN_QUEEN_PROMOTION_CHECK);
       expect(convertUciToSan(promotionPosition, 'b7b8q')).toBe('b8=Q+');
     });
 
     it('should handle knight promotion with check', () => {
-      // Position where knight promotion gives check to black king on b7
-      const promotionPosition = new Chess('8/1k1P4/8/8/8/8/8/4K3 w - - 0 1');
+      const promotionPosition = new Chess(FEN_KNIGHT_PROMOTION_CHECK);
       expect(convertUciToSan(promotionPosition, 'd7d8n')).toBe('d8=N+');
     });
 
     it('should handle promotions without check', () => {
-      // Position where promotions don't give check (black king on a3)
-      const promotionPosition = new Chess('8/3P4/8/8/8/k7/8/4K3 w - - 0 1');
+      const promotionPosition = new Chess(FEN_PROMOTION_NO_CHECK);
       expect(convertUciToSan(promotionPosition, 'd7d8q')).toBe('d8=Q');
       expect(convertUciToSan(promotionPosition, 'd7d8n')).toBe('d8=N');
     });
@@ -81,7 +85,7 @@ describe('PuzzleModel', () => {
       
       expect(position).not.toBeNull();
       if (position) {
-        expect(position.fen).toContain('rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R');
+        expect(position.fen).toContain(FEN_AFTER_NF3.split(' ')[0]);
         expect(position.isWhiteToMove).toBe(false);
       }
     });

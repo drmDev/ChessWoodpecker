@@ -30,7 +30,7 @@ This React Native application built with Expo provides a mobile interface for ch
 ### Chess-specific Libraries
 
 - **chess.js**: JavaScript chess library that handles chess logic, move validation, etc.
-- **react-native-chessboard**: Provides the interactive chessboard component for mobile
+- **Custom Chess Board**: In-house implementation of an interactive chessboard component with orientation support and gesture handling
 
 ### Navigation
 
@@ -63,7 +63,7 @@ TODO: redo tree when its back in a solid state
 
 ### 1. Chess Board and Puzzle Solving
 
-The application provides an interactive chess board where users can solve puzzles. The `ChessBoard` component uses `react-native-chessboard` for rendering and interaction, while `chess.js` handles the game logic.
+The application provides an interactive chess board where users can solve puzzles. The custom `OrientableChessBoard` component handles rendering and interaction, while `chess.js` handles the game logic.
 
 ### 2. Puzzle Integration
 
