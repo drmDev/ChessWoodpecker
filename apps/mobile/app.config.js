@@ -9,22 +9,22 @@ module.exports = {
     resizeMode: 'contain',
     backgroundColor: '#ffffff'
   },
-  updates: {
-    fallbackToCacheTimeout: 0
-  },
-  assetBundlePatterns: [
-    "**/*"
-  ],
   ios: {
-    supportsTablet: true
+    supportsTablet: true,
+    bundleIdentifier: "com.derekmonturo.chesswoodpecker",
+    buildNumber: "1"
   },
   android: {
     adaptiveIcon: {
       foregroundImage: './assets/adaptive-icon.png',
       backgroundColor: '#FFFFFF'
-    }
+    },
+    package: "com.derekmonturo.chesswoodpecker",
+    versionCode: 1
   },
   extra: {
-    enableLogging: true
+    eas: {
+      projectId: "081aafe2-8f30-4f29-aa87-5854a716e188"
+    }
   }
 }; 
