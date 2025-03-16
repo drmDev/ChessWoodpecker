@@ -14,6 +14,7 @@ export const SessionStatusBar: React.FC = () => {
   const navigation = useNavigation();
   const [isExpanded, setIsExpanded] = useState(false);
   
+  // Use the session state directly
   const { session } = state;
   
   // Calculate remaining puzzles
@@ -43,6 +44,7 @@ export const SessionStatusBar: React.FC = () => {
     navigation.navigate('Stats' as never);
   };
   
+  // Check if session is active before rendering
   if (!session.isActive) return null;
   
   return (

@@ -24,7 +24,7 @@ export const MainScreen: React.FC = () => {
     const [debugPuzzleId, setDebugPuzzleId] = useState('');
     const [hasStoredSession, setHasStoredSession] = useState(false);
 
-    const isSessionActive = state.isSessionActive && state.currentPuzzle !== null;
+    const isSessionActive = state.session.isActive && state.currentPuzzle !== null;
 
     // Add this useEffect to check for stored session on mount
     useEffect(() => {
@@ -103,7 +103,7 @@ export const MainScreen: React.FC = () => {
     // 3. During reset and auto-solve states
     // 4. But only if a session is active
     const shouldShowLoadingOverlay = (
-        state.isSessionActive && (
+        state.session.isActive && (
             state.isLoading || 
             puzzleSetupState === 'PRE_SETUP' ||
             puzzleSetupState === 'SETUP_IN_PROGRESS' ||
@@ -149,11 +149,11 @@ export const MainScreen: React.FC = () => {
 
     // Reset puzzle setup state when session ends
     useEffect(() => {
-        if (!state.isSessionActive) {
+        if (!state.session.isActive) {
             setIsPuzzleSetupComplete(false);
             setIsTransitioningToPuzzle(false);
         }
-    }, [state.isSessionActive]);
+    }, [state.session.isActive]);
 
     const handleDragStart = () => {
         if (!isAutoSolving && !isOpponentMoving) {

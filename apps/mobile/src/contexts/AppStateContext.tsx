@@ -42,23 +42,18 @@ export type PuzzleTransitionState =
     | 'AUTO_SOLVING';
 export type PuzzleSetupState = 'PRE_SETUP' | 'SETUP_IN_PROGRESS' | 'SETUP_COMPLETE';
 
-// Renamed from AppState to ChessAppState
+// Renamed from AppState to ChessAppState and simplified
 interface ChessAppState {
     currentPuzzle: Puzzle | null;
     isLoading: boolean;
     theme: 'light' | 'dark';
-    isSessionActive: boolean;
     session: SessionState;
-    puzzlesSolved: number;
-    puzzlesAttempted: number;
-    sessionStartTime: number | null;
-    sessionCompletedTime: number | null;
     totalPuzzlesInSession: number;
     puzzleTransitionState: PuzzleTransitionState;
     puzzleSetupState: PuzzleSetupState;
 }
 
-// Define action types
+// Define action types - updated to remove redundant actions
 type Action =
     | { type: 'START_SESSION' }
     | { type: 'END_SESSION' }
@@ -72,8 +67,6 @@ type Action =
     | { type: 'TOGGLE_THEME' }
     | { type: 'LOAD_STORED_SESSION'; payload: Partial<ChessAppState> }
     | { type: 'SET_TOTAL_PUZZLES'; payload: number }
-    | { type: 'INCREMENT_PUZZLES_SOLVED' }
-    | { type: 'INCREMENT_PUZZLES_ATTEMPTED' }
     | { type: 'SET_PUZZLE_TRANSITION_STATE'; payload: PuzzleTransitionState }
     | { type: 'SET_PUZZLE_SETUP_STATE'; payload: PuzzleSetupState };
 
@@ -88,7 +81,6 @@ const initialState: ChessAppState = {
     currentPuzzle: null,
     isLoading: false,
     theme: 'light',
-    isSessionActive: false,
     session: {
         isActive: false,
         isPaused: false,
@@ -100,10 +92,6 @@ const initialState: ChessAppState = {
         failedPuzzles: [],
         categoryCounts: {}
     },
-    puzzlesSolved: 0,
-    puzzlesAttempted: 0,
-    sessionStartTime: null,
-    sessionCompletedTime: null,
     totalPuzzlesInSession: 200, // Default value, will be updated when session is initialized
     puzzleTransitionState: 'STABLE',
     puzzleSetupState: 'PRE_SETUP',
@@ -136,17 +124,12 @@ function updateCategoryCounts(
     return updatedCounts;
 }
 
-// Reducer function updated with renamed type
+// Reducer function updated with simplified state
 function appReducer(state: ChessAppState, action: Action): ChessAppState {
     switch (action.type) {
         case 'START_SESSION':
             return {
                 ...state,
-                isSessionActive: true,
-                puzzlesSolved: 0,
-                puzzlesAttempted: 0,
-                sessionStartTime: Date.now(),
-                sessionCompletedTime: null,
                 currentPuzzle: null,
                 isLoading: false,
                 session: {
@@ -165,9 +148,7 @@ function appReducer(state: ChessAppState, action: Action): ChessAppState {
         case 'END_SESSION':
             return {
                 ...state,
-                isSessionActive: false,
                 currentPuzzle: null,
-                sessionCompletedTime: Date.now(),
                 session: {
                     ...state.session,
                     isActive: false,
@@ -212,7 +193,7 @@ function appReducer(state: ChessAppState, action: Action): ChessAppState {
             if (!state.session.isActive) return state;
             
             const category = action.payload.theme || 'Uncategorized';
-            const newState = {
+            return {
                 ...state,
                 session: {
                     ...state.session,
@@ -234,19 +215,13 @@ function appReducer(state: ChessAppState, action: Action): ChessAppState {
                     )
                 }
             };
-            
-            // Persist session after update
-            AsyncStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(newState.session))
-                .catch(error => console.error('Failed to save session:', error));
-            
-            return newState;
         }
             
         case 'RECORD_FAILED_PUZZLE': {
             if (!state.session.isActive) return state;
             
             const failedCategory = action.payload.theme || 'Uncategorized';
-            const newState = {
+            return {
                 ...state,
                 session: {
                     ...state.session,
@@ -268,12 +243,6 @@ function appReducer(state: ChessAppState, action: Action): ChessAppState {
                     )
                 }
             };
-            
-            // Persist session after update
-            AsyncStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(newState.session))
-                .catch(error => console.error('Failed to save session:', error));
-            
-            return newState;
         }
             
         case 'UPDATE_ELAPSED_TIME':
@@ -295,25 +264,12 @@ function appReducer(state: ChessAppState, action: Action): ChessAppState {
             return {
                 ...state,
                 ...action.payload,
-                isSessionActive: true,
             };
             
         case 'SET_TOTAL_PUZZLES':
             return {
                 ...state,
                 totalPuzzlesInSession: action.payload,
-            };
-            
-        case 'INCREMENT_PUZZLES_SOLVED':
-            return {
-                ...state,
-                puzzlesSolved: state.puzzlesSolved + 1,
-            };
-            
-        case 'INCREMENT_PUZZLES_ATTEMPTED':
-            return {
-                ...state,
-                puzzlesAttempted: state.puzzlesAttempted + 1,
             };
 
         case 'SET_PUZZLE_TRANSITION_STATE':
@@ -333,7 +289,7 @@ function appReducer(state: ChessAppState, action: Action): ChessAppState {
     }
 }
 
-// Provider component updated with renamed type
+// Provider component updated with simplified state
 export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [state, dispatch] = useReducer(appReducer, initialState);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -367,38 +323,31 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     // Handle app state changes to auto-pause session
     useEffect(() => {
         const _handleAppStateChange = (nextAppState: string) => {
-            if (nextAppState === 'background' && state.isSessionActive && !state.session.isPaused) {
+            if (nextAppState === 'background' && state.session.isActive && !state.session.isPaused) {
                 // Auto-pause when app goes to background
                 dispatch({ type: 'PAUSE_SESSION' });
             }
         };        
-    }, [state.isSessionActive, state.session.isPaused]);
+    }, [state.session.isActive, state.session.isPaused]);
 
-    // Save session state to AsyncStorage whenever it changes
+    // Save session state to AsyncStorage whenever it changes - simplified
     useEffect(() => {
-        if (state.isSessionActive) {
-            const sessionData = {
-                puzzlesSolved: state.puzzlesSolved,
-                puzzlesAttempted: state.puzzlesAttempted,
-                sessionStartTime: state.sessionStartTime,
-                totalPuzzlesInSession: state.totalPuzzlesInSession,
-            };
-
-            AsyncStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(sessionData))
+        if (state.session.isActive) {
+            AsyncStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(state.session))
                 .catch(error => console.error('Failed to save session state:', error));
         }
-    }, [state.isSessionActive, state.puzzlesSolved, state.puzzlesAttempted]);
+    }, [state.session]);
 
     // Update total puzzles when session starts
     useEffect(() => {
-        if (state.isSessionActive && state.sessionStartTime) {
+        if (state.session.isActive && state.session.startTime) {
             // Get the actual number of puzzles in the session
             const totalPuzzles = puzzleService.getRemainingPuzzleCount();
             if (totalPuzzles > 0) {
                 dispatch({ type: 'SET_TOTAL_PUZZLES', payload: totalPuzzles });
             }
         }
-    }, [state.isSessionActive, state.sessionStartTime]);
+    }, [state.session.isActive, state.session.startTime]);
 
     return (
         <AppStateContext.Provider value={{ state, dispatch }}>
