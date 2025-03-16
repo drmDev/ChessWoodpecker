@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Puzzle } from '../models/PuzzleModel';
 import { STORAGE_KEYS } from '../constants/storage';
 import { puzzleService } from '../services/PuzzleService';
+import { AppState, AppStateStatus } from 'react-native';
 
 // Define puzzle attempt record structure
 interface PuzzleAttempt {
@@ -17,10 +18,9 @@ interface PuzzleAttempt {
 // Define the session state structure
 interface SessionState {
     isActive: boolean;
-    isPaused: boolean;
     startTime: number;
-    elapsedTimeMs: number; // Single source of truth for elapsed time
-    pausedAt: number | null;
+    elapsedTimeMs: number;
+    pausedAt: number | null; // Keep this for internal timer calculations
     totalPuzzles: number;
     successfulPuzzles: PuzzleAttempt[];
     failedPuzzles: PuzzleAttempt[];
@@ -51,14 +51,14 @@ interface ChessAppState {
     totalPuzzlesInSession: number;
     puzzleTransitionState: PuzzleTransitionState;
     puzzleSetupState: PuzzleSetupState;
+    isAppInBackground: boolean;
 }
 
 // Define action types - updated to remove redundant actions
 type Action =
     | { type: 'START_SESSION' }
     | { type: 'END_SESSION' }
-    | { type: 'PAUSE_SESSION' }
-    | { type: 'RESUME_SESSION' }
+    | { type: 'SET_APP_BACKGROUND'; payload: boolean }
     | { type: 'SET_CURRENT_PUZZLE'; payload: Puzzle }
     | { type: 'SET_LOADING'; payload: boolean }
     | { type: 'RECORD_SUCCESSFUL_PUZZLE'; payload: { id: string; theme: string; rating?: number } }
@@ -85,7 +85,6 @@ const initialState: ChessAppState = {
     theme: 'light',
     session: {
         isActive: false,
-        isPaused: false,
         startTime: 0,
         elapsedTimeMs: 0,
         pausedAt: null,
@@ -97,6 +96,7 @@ const initialState: ChessAppState = {
     totalPuzzlesInSession: 200, // Default value, will be updated when session is initialized
     puzzleTransitionState: 'STABLE',
     puzzleSetupState: 'PRE_SETUP',
+    isAppInBackground: false,
 };
 
 // Helper function to update category counts
@@ -136,7 +136,6 @@ function appReducer(state: ChessAppState, action: Action): ChessAppState {
                 isLoading: false,
                 session: {
                     isActive: true,
-                    isPaused: false,
                     startTime: Date.now(),
                     elapsedTimeMs: 0,
                     pausedAt: null,
@@ -153,31 +152,21 @@ function appReducer(state: ChessAppState, action: Action): ChessAppState {
                 currentPuzzle: null,
                 session: {
                     ...state.session,
-                    isActive: false,
-                    isPaused: false
+                    isActive: false
                 }
             };
             
-        case 'PAUSE_SESSION':
+        case 'SET_APP_BACKGROUND':
             return {
                 ...state,
+                isAppInBackground: action.payload,
                 session: {
                     ...state.session,
-                    isPaused: true,
-                    pausedAt: Date.now()
+                    // When going to background, store the current time
+                    pausedAt: action.payload ? Date.now() : null
                 }
             };
             
-        case 'RESUME_SESSION':
-            return {
-                ...state,
-                session: {
-                    ...state.session,
-                    isPaused: false,
-                    pausedAt: null
-                }
-            };
-
         case 'SET_CURRENT_PUZZLE':
             return {
                 ...state,
@@ -309,8 +298,8 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             timerRef.current = null;
         }
         
-        // Only run timer if session is active
-        if (state.session.isActive && !state.session.isPaused) {
+        // Only run timer if session is active and app is not in background
+        if (state.session.isActive && !state.isAppInBackground) {
             timerRef.current = setInterval(() => {
                 dispatch({ 
                     type: 'UPDATE_ELAPSED_TIME', 
@@ -325,17 +314,24 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 timerRef.current = null;
             }
         };
-    }, [state.session.isActive, state.session.isPaused, state.session.elapsedTimeMs]);
+    }, [state.session.isActive, state.isAppInBackground, state.session.elapsedTimeMs]);
     
     // Handle app state changes to auto-pause session
     useEffect(() => {
-        const _handleAppStateChange = (nextAppState: string) => {
-            if (nextAppState === 'background' && state.session.isActive && !state.session.isPaused) {
-                // Auto-pause when app goes to background
-                dispatch({ type: 'PAUSE_SESSION' });
+        const handleAppStateChange = (nextAppState: AppStateStatus) => {
+            if (nextAppState === 'background') {
+                dispatch({ type: 'SET_APP_BACKGROUND', payload: true });
+            } else if (nextAppState === 'active') {
+                dispatch({ type: 'SET_APP_BACKGROUND', payload: false });
             }
-        };        
-    }, [state.session.isActive, state.session.isPaused]);
+        };
+        
+        const subscription = AppState.addEventListener('change', handleAppStateChange);
+        
+        return () => {
+            subscription.remove();
+        };
+    }, [dispatch]);
 
     // Save session state to AsyncStorage whenever it changes - simplified
     useEffect(() => {

@@ -26,14 +26,6 @@ export const SessionStatusBar: React.FC = () => {
     setIsExpanded(!isExpanded);
   };
   
-  const handlePauseResume = () => {
-    if (session.isPaused) {
-      dispatch({ type: 'RESUME_SESSION' });
-    } else {
-      dispatch({ type: 'PAUSE_SESSION' });
-    }
-  };
-  
   const handleViewStats = () => {
     navigation.navigate('Stats' as never);
   };
@@ -53,8 +45,8 @@ export const SessionStatusBar: React.FC = () => {
         {/* Main status bar - always visible */}
         <View style={styles.mainBar}>
           <View style={styles.statusInfo}>
-            <Text style={[styles.statusText, { color: session.isPaused ? theme.error : theme.success }]}>
-              {session.isPaused ? 'PAUSED' : 'ACTIVE'}
+            <Text style={[styles.statusText, { color: theme.text }]}>
+              ACTIVE:
             </Text>
             <Text style={[styles.timeText, { color: theme.text }]}>
               {formatTimeHHMMSS(session.elapsedTimeMs)}
@@ -77,15 +69,6 @@ export const SessionStatusBar: React.FC = () => {
       {/* Expanded controls - only visible when expanded */}
       {isExpanded && (
         <View style={[styles.expandedControls, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-          <TouchableOpacity 
-            style={[styles.controlButton, { backgroundColor: session.isPaused ? theme.primary : theme.warning }]} 
-            onPress={handlePauseResume}
-          >
-            <Text style={[styles.buttonText, { color: 'white' }]}>
-              {session.isPaused ? 'Resume' : 'Pause'}
-            </Text>
-          </TouchableOpacity>
-          
           <TouchableOpacity 
             style={[styles.controlButton, { backgroundColor: theme.secondary }]} 
             onPress={handleViewStats}
