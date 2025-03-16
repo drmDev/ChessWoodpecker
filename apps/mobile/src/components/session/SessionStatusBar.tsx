@@ -1,9 +1,7 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useAppState } from '../../contexts/AppStateContext';
 import { useTheme } from '../../contexts/ThemeContext';
-import { formatTimeHHMMSS } from '../../utils/timeUtils';
 import { useNavigation } from '@react-navigation/native';
 import { playSound, SoundTypes } from '../../utils/sounds';
 import { puzzleService } from '../../services/PuzzleService';
@@ -12,23 +10,13 @@ export const SessionStatusBar: React.FC = () => {
   const { state, dispatch } = useAppState();
   const { theme } = useTheme();
   const navigation = useNavigation();
-  const [isExpanded, setIsExpanded] = useState(false);
   
   // Use the session state directly
   const { session } = state;
   
   // Calculate remaining puzzles
   const remainingPuzzles = puzzleService.getRemainingPuzzleCount();
-  const totalPuzzles = state.totalPuzzlesInSession + 1;
-  const completedPuzzles = state.totalPuzzlesInSession - remainingPuzzles + 1;
-  
-  const toggleExpanded = () => {
-    setIsExpanded(!isExpanded);
-  };
-  
-  const handleViewStats = () => {
-    navigation.navigate('Stats' as never);
-  };
+  const completedPuzzles = 200 - remainingPuzzles;
   
   const handleEndSession = () => {
     playSound(SoundTypes.END_SESSION);
@@ -40,86 +28,31 @@ export const SessionStatusBar: React.FC = () => {
   if (!session.isActive) return null;
   
   return (
-    <View style={styles.outerContainer}>
-      <View style={[styles.container, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-        {/* Main status bar - always visible */}
-        <View style={styles.mainBar}>
-          <View style={styles.statusInfo}>
-            <Text style={[styles.statusText, { color: theme.text }]}>
-              ACTIVE:
-            </Text>
-            <Text style={[styles.timeText, { color: theme.text }]}>
-              {formatTimeHHMMSS(session.elapsedTimeMs)}
-            </Text>
-            <Text style={[styles.puzzleCountText, { color: theme.primary }]}>
-              Puzzle {completedPuzzles}/{totalPuzzles}
-            </Text>
-          </View>
-          
-          <TouchableOpacity onPress={toggleExpanded} style={styles.expandButton}>
-            <Ionicons 
-              name={isExpanded ? 'chevron-up' : 'chevron-down'} 
-              size={20} 
-              color={theme.text} 
-            />
-          </TouchableOpacity>
+    <View style={[styles.container, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+      <View style={styles.mainBar}>
+        <View style={styles.statusInfo}>
+          <Text style={[styles.timeText, { color: theme.text }]}>
+            Puzzle {completedPuzzles}/200
+          </Text>
         </View>
+        
+        <TouchableOpacity 
+          style={[styles.endButton, { backgroundColor: theme.error }]} 
+          onPress={handleEndSession}
+        >
+          <Text style={[styles.buttonText, { color: 'white' }]}>End Session</Text>
+        </TouchableOpacity>
       </View>
-      
-      {/* Expanded controls - only visible when expanded */}
-      {isExpanded && (
-        <View style={[styles.expandedControls, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-          <TouchableOpacity 
-            style={[styles.controlButton, { backgroundColor: theme.secondary }]} 
-            onPress={handleViewStats}
-          >
-            <Text style={[styles.buttonText, { color: 'white' }]}>Stats</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={[styles.controlButton, { backgroundColor: theme.error }]} 
-            onPress={handleEndSession}
-          >
-            <Text style={[styles.buttonText, { color: 'white' }]}>End</Text>
-          </TouchableOpacity>
-        </View>
-      )}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  outerContainer: {
-    width: '100%',
-  },
-  buttonText: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
   container: {
     borderBottomWidth: 1,
     marginBottom: 0,
     width: '100%',
     paddingVertical: 8,
-  },
-  controlButton: {
-    alignItems: 'center',
-    borderRadius: 4,
-    marginHorizontal: 4,
-    minWidth: 70,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  expandButton: {
-    padding: 4,
-  },
-  expandedControls: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    marginBottom: 8,
   },
   mainBar: {
     alignItems: 'center',
@@ -128,19 +61,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 4,
   },
-  puzzleCountText: {
-    fontSize: 12,
-  },
   statusInfo: {
     alignItems: 'center',
     flexDirection: 'row',
   },
-  statusText: {
-    fontWeight: 'bold',
-    marginRight: 12,
-  },
   timeText: {
     fontWeight: '500',
-    marginRight: 12,
+    fontSize: 16,
+  },
+  endButton: {
+    alignItems: 'center',
+    borderRadius: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  buttonText: {
+    fontSize: 14,
+    fontWeight: '500',
   }
 }); 
