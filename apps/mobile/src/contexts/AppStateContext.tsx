@@ -1,7 +1,8 @@
 // AppStateContext.tsx
-import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react';
-import { Puzzle } from '../models/PuzzleModel';
+import React, { createContext, useContext, useReducer, useEffect, useRef, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Puzzle } from '../models/PuzzleModel';
+import { STORAGE_KEYS } from '../constants/storage';
 import { puzzleService } from '../services/PuzzleService';
 
 // Define puzzle attempt record structure
@@ -41,23 +42,18 @@ export type PuzzleTransitionState =
     | 'AUTO_SOLVING';
 export type PuzzleSetupState = 'PRE_SETUP' | 'SETUP_IN_PROGRESS' | 'SETUP_COMPLETE';
 
-// Renamed from AppState to ChessAppState
+// Renamed from AppState to ChessAppState and simplified
 interface ChessAppState {
     currentPuzzle: Puzzle | null;
     isLoading: boolean;
     theme: 'light' | 'dark';
-    isSessionActive: boolean;
     session: SessionState;
-    puzzlesSolved: number;
-    puzzlesAttempted: number;
-    sessionStartTime: number | null;
-    sessionCompletedTime: number | null;
     totalPuzzlesInSession: number;
     puzzleTransitionState: PuzzleTransitionState;
     puzzleSetupState: PuzzleSetupState;
 }
 
-// Define action types
+// Define action types - updated to remove redundant actions
 type Action =
     | { type: 'START_SESSION' }
     | { type: 'END_SESSION' }
@@ -71,8 +67,6 @@ type Action =
     | { type: 'TOGGLE_THEME' }
     | { type: 'LOAD_STORED_SESSION'; payload: Partial<ChessAppState> }
     | { type: 'SET_TOTAL_PUZZLES'; payload: number }
-    | { type: 'INCREMENT_PUZZLES_SOLVED' }
-    | { type: 'INCREMENT_PUZZLES_ATTEMPTED' }
     | { type: 'SET_PUZZLE_TRANSITION_STATE'; payload: PuzzleTransitionState }
     | { type: 'SET_PUZZLE_SETUP_STATE'; payload: PuzzleSetupState };
 
@@ -80,17 +74,15 @@ type Action =
 const AppStateContext = createContext<{
     state: ChessAppState;
     dispatch: React.Dispatch<Action>;
+    loadStoredSession: () => Promise<boolean>;
+    clearStoredSession: () => Promise<boolean>;
 } | undefined>(undefined);
-
-// Add storage key constant at the top
-const SESSION_STORAGE_KEY = '@chess_woodpecker/session';
 
 // Initial state with simplified session
 const initialState: ChessAppState = {
     currentPuzzle: null,
     isLoading: false,
     theme: 'light',
-    isSessionActive: false,
     session: {
         isActive: false,
         isPaused: false,
@@ -102,10 +94,6 @@ const initialState: ChessAppState = {
         failedPuzzles: [],
         categoryCounts: {}
     },
-    puzzlesSolved: 0,
-    puzzlesAttempted: 0,
-    sessionStartTime: null,
-    sessionCompletedTime: null,
     totalPuzzlesInSession: 200, // Default value, will be updated when session is initialized
     puzzleTransitionState: 'STABLE',
     puzzleSetupState: 'PRE_SETUP',
@@ -138,17 +126,12 @@ function updateCategoryCounts(
     return updatedCounts;
 }
 
-// Reducer function updated with renamed type
+// Reducer function updated with simplified state
 function appReducer(state: ChessAppState, action: Action): ChessAppState {
     switch (action.type) {
         case 'START_SESSION':
             return {
                 ...state,
-                isSessionActive: true,
-                puzzlesSolved: 0,
-                puzzlesAttempted: 0,
-                sessionStartTime: Date.now(),
-                sessionCompletedTime: null,
                 currentPuzzle: null,
                 isLoading: false,
                 session: {
@@ -167,9 +150,7 @@ function appReducer(state: ChessAppState, action: Action): ChessAppState {
         case 'END_SESSION':
             return {
                 ...state,
-                isSessionActive: false,
                 currentPuzzle: null,
-                sessionCompletedTime: Date.now(),
                 session: {
                     ...state.session,
                     isActive: false,
@@ -214,7 +195,7 @@ function appReducer(state: ChessAppState, action: Action): ChessAppState {
             if (!state.session.isActive) return state;
             
             const category = action.payload.theme || 'Uncategorized';
-            const newState = {
+            return {
                 ...state,
                 session: {
                     ...state.session,
@@ -236,19 +217,13 @@ function appReducer(state: ChessAppState, action: Action): ChessAppState {
                     )
                 }
             };
-            
-            // Persist session after update
-            AsyncStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(newState.session))
-                .catch(error => console.error('Failed to save session:', error));
-            
-            return newState;
         }
             
         case 'RECORD_FAILED_PUZZLE': {
             if (!state.session.isActive) return state;
             
             const failedCategory = action.payload.theme || 'Uncategorized';
-            const newState = {
+            return {
                 ...state,
                 session: {
                     ...state.session,
@@ -270,12 +245,6 @@ function appReducer(state: ChessAppState, action: Action): ChessAppState {
                     )
                 }
             };
-            
-            // Persist session after update
-            AsyncStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(newState.session))
-                .catch(error => console.error('Failed to save session:', error));
-            
-            return newState;
         }
             
         case 'UPDATE_ELAPSED_TIME':
@@ -297,25 +266,17 @@ function appReducer(state: ChessAppState, action: Action): ChessAppState {
             return {
                 ...state,
                 ...action.payload,
-                isSessionActive: true,
+                // Ensure we don't overwrite these properties if they're not in the payload
+                theme: action.payload.theme || state.theme,
+                isLoading: false,
+                puzzleTransitionState: 'STABLE',
+                puzzleSetupState: 'PRE_SETUP'
             };
             
         case 'SET_TOTAL_PUZZLES':
             return {
                 ...state,
                 totalPuzzlesInSession: action.payload,
-            };
-            
-        case 'INCREMENT_PUZZLES_SOLVED':
-            return {
-                ...state,
-                puzzlesSolved: state.puzzlesSolved + 1,
-            };
-            
-        case 'INCREMENT_PUZZLES_ATTEMPTED':
-            return {
-                ...state,
-                puzzlesAttempted: state.puzzlesAttempted + 1,
             };
 
         case 'SET_PUZZLE_TRANSITION_STATE':
@@ -335,7 +296,7 @@ function appReducer(state: ChessAppState, action: Action): ChessAppState {
     }
 }
 
-// Provider component updated with renamed type
+// Provider component updated with simplified state
 export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [state, dispatch] = useReducer(appReducer, initialState);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -369,41 +330,77 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     // Handle app state changes to auto-pause session
     useEffect(() => {
         const _handleAppStateChange = (nextAppState: string) => {
-            if (nextAppState === 'background' && state.isSessionActive && !state.session.isPaused) {
+            if (nextAppState === 'background' && state.session.isActive && !state.session.isPaused) {
                 // Auto-pause when app goes to background
                 dispatch({ type: 'PAUSE_SESSION' });
             }
         };        
-    }, [state.isSessionActive, state.session.isPaused]);
+    }, [state.session.isActive, state.session.isPaused]);
 
-    // Save session state to AsyncStorage whenever it changes
+    // Save session state to AsyncStorage whenever it changes - simplified
     useEffect(() => {
-        if (state.isSessionActive) {
-            const sessionData = {
-                puzzlesSolved: state.puzzlesSolved,
-                puzzlesAttempted: state.puzzlesAttempted,
-                sessionStartTime: state.sessionStartTime,
+        // Only save session if it's active
+        if (state.session.isActive) {
+            // Create a simplified version of the state to store
+            const stateToStore = {
+                session: state.session,
+                currentPuzzle: state.currentPuzzle,
                 totalPuzzlesInSession: state.totalPuzzlesInSession,
+                theme: state.theme
             };
-
-            AsyncStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(sessionData))
+            
+            AsyncStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(stateToStore))
                 .catch(error => console.error('Failed to save session state:', error));
         }
-    }, [state.isSessionActive, state.puzzlesSolved, state.puzzlesAttempted]);
+    }, [state.session, state.currentPuzzle, state.totalPuzzlesInSession]);
 
     // Update total puzzles when session starts
     useEffect(() => {
-        if (state.isSessionActive && state.sessionStartTime) {
+        if (state.session.isActive && state.session.startTime) {
             // Get the actual number of puzzles in the session
             const totalPuzzles = puzzleService.getRemainingPuzzleCount();
             if (totalPuzzles > 0) {
                 dispatch({ type: 'SET_TOTAL_PUZZLES', payload: totalPuzzles });
             }
         }
-    }, [state.isSessionActive, state.sessionStartTime]);
+    }, [state.session.isActive, state.session.startTime]);
+
+    // Add a function to load stored session
+    const loadStoredSession = useCallback(async () => {
+        try {
+            const savedSessionData = await AsyncStorage.getItem(STORAGE_KEYS.SESSION);
+            if (savedSessionData) {
+                const storedState = JSON.parse(savedSessionData);
+                dispatch({ type: 'LOAD_STORED_SESSION', payload: storedState });
+                return true;
+            }
+        } catch (error) {
+            console.error('Failed to load stored session:', error);
+        }
+        return false;
+    }, [dispatch]);
+
+    // Add a function to clear stored session
+    const clearStoredSession = useCallback(async () => {
+        try {
+            await AsyncStorage.removeItem(STORAGE_KEYS.SESSION);
+            return true;
+        } catch (error) {
+            console.error('Failed to clear stored session:', error);
+            return false;
+        }
+    }, []);
+
+    // Update the context value to include these functions
+    const contextValue = {
+        state,
+        dispatch,
+        loadStoredSession,
+        clearStoredSession
+    };
 
     return (
-        <AppStateContext.Provider value={{ state, dispatch }}>
+        <AppStateContext.Provider value={contextValue}>
             {children}
         </AppStateContext.Provider>
     );

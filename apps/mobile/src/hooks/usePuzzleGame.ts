@@ -7,6 +7,7 @@ import { Puzzle } from '../models/PuzzleModel';
 import { extractMoveComponents, isPromotionMove, replayMoves, getMoveType } from '../utils/chess/PuzzleLogic';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { triggerHaptic } from '../utils/haptics';
+import { STORAGE_KEYS } from 'src/constants/storage';
 
 
 interface PuzzleGameState {
@@ -296,7 +297,7 @@ export function usePuzzleGame(
         }
       });
 
-      await AsyncStorage.setItem('@chess_woodpecker/session', JSON.stringify(state.session));
+      await AsyncStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(state.session));
       
       setTransitionState('LOADING');
       onPuzzleComplete();

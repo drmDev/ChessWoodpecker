@@ -12,18 +12,18 @@ import { puzzleService } from '../services/PuzzleService';
 import { playSound, SoundTypes } from '../utils/sounds';
 import { Puzzle } from '../models/PuzzleModel';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { STORAGE_KEYS } from '../constants/storage';
 
 export const MainScreen: React.FC = () => {
     const { theme } = useTheme();
-    const { state, dispatch } = useAppState();
+    const { state, dispatch, loadStoredSession, clearStoredSession } = useAppState();
     const [isPuzzleSetupComplete, setIsPuzzleSetupComplete] = useState(false);
     const [isTransitioningToPuzzle, setIsTransitioningToPuzzle] = useState(false);
     const [_, setIsInteractingWithBoard] = useState(false);
     const [showDebugPanel, setShowDebugPanel] = useState(false);
     const [debugPuzzleId, setDebugPuzzleId] = useState('');
     const [hasStoredSession, setHasStoredSession] = useState(false);
-
-    const isSessionActive = state.isSessionActive && state.currentPuzzle !== null;
+    const isSessionActive = state.session.isActive;
 
     // Add this useEffect to check for stored session on mount
     useEffect(() => {
@@ -32,7 +32,7 @@ export const MainScreen: React.FC = () => {
 
     const checkForStoredSession = async () => {
         try {
-            const savedSession = await AsyncStorage.getItem('@chess_woodpecker/session');
+            const savedSession = await AsyncStorage.getItem(STORAGE_KEYS.SESSION);
             setHasStoredSession(!!savedSession);
         } catch (error) {
             console.error('Failed to check for stored session:', error);
@@ -102,7 +102,7 @@ export const MainScreen: React.FC = () => {
     // 3. During reset and auto-solve states
     // 4. But only if a session is active
     const shouldShowLoadingOverlay = (
-        state.isSessionActive && (
+        state.session.isActive && (
             state.isLoading || 
             puzzleSetupState === 'PRE_SETUP' ||
             puzzleSetupState === 'SETUP_IN_PROGRESS' ||
@@ -148,11 +148,11 @@ export const MainScreen: React.FC = () => {
 
     // Reset puzzle setup state when session ends
     useEffect(() => {
-        if (!state.isSessionActive) {
+        if (!state.session.isActive) {
             setIsPuzzleSetupComplete(false);
             setIsTransitioningToPuzzle(false);
         }
-    }, [state.isSessionActive]);
+    }, [state.session.isActive]);
 
     const handleDragStart = () => {
         if (!isAutoSolving && !isOpponentMoving) {
@@ -193,20 +193,22 @@ export const MainScreen: React.FC = () => {
 
     const handleResumeSession = async () => {
         try {
-            const savedSessionData = await AsyncStorage.getItem('@chess_woodpecker/session');
-            if (savedSessionData) {
-                const sessionState = JSON.parse(savedSessionData);
-                dispatch({ type: 'LOAD_STORED_SESSION', payload: sessionState });
+            const success = await loadStoredSession();
+            
+            if (success) {
+                // Initialize a new session with shuffled puzzles if needed
+                if (puzzleService.getRemainingPuzzleCount() === 0) {
+                    puzzleService.initializeSession();
+                }
                 
-                // Initialize a new session with shuffled puzzles
-                puzzleService.initializeSession();
-                
-                // Get the first puzzle from the session
-                const puzzle = await puzzleService.getNextSessionPuzzle();
-                if (puzzle) {
-                    dispatch({ type: 'SET_CURRENT_PUZZLE', payload: puzzle });
-                } else {
-                    throw new Error('Failed to get first puzzle for resumed session');
+                // If there's no current puzzle, get the next one
+                if (!state.currentPuzzle) {
+                    const puzzle = await puzzleService.getNextSessionPuzzle();
+                    if (puzzle) {
+                        dispatch({ type: 'SET_CURRENT_PUZZLE', payload: puzzle });
+                    } else {
+                        throw new Error('Failed to get first puzzle for resumed session');
+                    }
                 }
             }
         } catch (error) {
@@ -215,12 +217,10 @@ export const MainScreen: React.FC = () => {
     };
 
     const handleClearSession = async () => {
-        try {
-            await AsyncStorage.removeItem('@chess_woodpecker/session');
+        const success = await clearStoredSession();
+        if (success) {
             setHasStoredSession(false);
             console.log('Session cleared');
-        } catch (error) {
-            console.error('Failed to clear session:', error);
         }
     };
 
