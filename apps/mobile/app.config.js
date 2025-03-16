@@ -12,15 +12,17 @@ module.exports = {
   ios: {
     supportsTablet: true,
     bundleIdentifier: "com.derekmonturo.chesswoodpecker",
-    buildNumber: "1"
+    buildNumber: "1",
+    infoPlist: {
+      ITSAppUsesNonExemptEncryption: false
+    }
   },
   android: {
     adaptiveIcon: {
       foregroundImage: './assets/adaptive-icon.png',
       backgroundColor: '#FFFFFF'
     },
-    package: "com.derekmonturo.chesswoodpecker",
-    versionCode: 1
+    package: "com.derekmonturo.chesswoodpecker"
   },
   extra: {
     eas: {
