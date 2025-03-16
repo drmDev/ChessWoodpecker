@@ -23,8 +23,7 @@ export const MainScreen: React.FC = () => {
     const [showDebugPanel, setShowDebugPanel] = useState(false);
     const [debugPuzzleId, setDebugPuzzleId] = useState('');
     const [hasStoredSession, setHasStoredSession] = useState(false);
-
-    const isSessionActive = state.session.isActive && state.currentPuzzle !== null;
+    const isSessionActive = state.session.isActive;
 
     // Add this useEffect to check for stored session on mount
     useEffect(() => {
