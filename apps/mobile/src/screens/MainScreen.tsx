@@ -85,6 +85,7 @@ export const MainScreen: React.FC = () => {
             console.error('Failed to fetch new puzzle:', error);
         } finally {
             dispatch({ type: 'SET_LOADING', payload: false });
+            setIsTransitioningToPuzzle(false);
         }
     };
 
@@ -168,11 +169,12 @@ export const MainScreen: React.FC = () => {
 
     const handleStartSession = async () => {
         try {
+            dispatch({ type: 'SET_LOADING', payload: true });
+            setIsTransitioningToPuzzle(true);
+            
             await playSound(SoundTypes.START_SESSION);
             setIsPuzzleSetupComplete(false);
-            setIsTransitioningToPuzzle(true);
             dispatch({ type: 'START_SESSION' });
-            dispatch({ type: 'SET_LOADING', payload: true });
             
             // Initialize the session with shuffled puzzles
             puzzleService.initializeSession();
@@ -182,37 +184,99 @@ export const MainScreen: React.FC = () => {
             if (puzzle) {
                 dispatch({ type: 'SET_CURRENT_PUZZLE', payload: puzzle });
             } else {
-                throw new Error('Failed to get first puzzle for session');
+                throw new Error('Failed to get puzzle for session');
             }
         } catch (error) {
             console.error('Failed to start session:', error);
         } finally {
             dispatch({ type: 'SET_LOADING', payload: false });
+            setIsTransitioningToPuzzle(false);
         }
+    };
+
+    // Add this function to better log session data
+    const logSessionData = () => {
+        const sessionData = {
+            isActive: state.session.isActive,
+            startTime: state.session.startTime,
+            elapsedTimeMs: state.session.elapsedTimeMs,
+            totalPuzzles: state.session.totalPuzzles,
+            successfulPuzzles: state.session.successfulPuzzles.length,
+            failedPuzzles: state.session.failedPuzzles.length,
+            categoryCounts: Object.keys(state.session.categoryCounts).map(key => ({
+                category: key,
+                stats: state.session.categoryCounts[key]
+            })),
+            currentPuzzleId: state.currentPuzzle?.id,
+            remainingPuzzles: puzzleService.getRemainingPuzzleCount(),
+            totalPuzzlesInSession: state.totalPuzzlesInSession
+        };
+        
+        console.log('Detailed Session Data:', JSON.stringify(sessionData, null, 2));
     };
 
     const handleResumeSession = async () => {
         try {
+            console.log('Starting resume session process');
+            dispatch({ type: 'SET_LOADING', payload: true });
+            setIsTransitioningToPuzzle(true);
+            
             const success = await loadStoredSession();
+            console.log('Load stored session result:', success);
             
             if (success) {
-                // Initialize a new session with shuffled puzzles if needed
-                if (puzzleService.getRemainingPuzzleCount() === 0) {
-                    puzzleService.initializeSession();
+                // Log detailed session data after loading
+                logSessionData();
+                
+                // Force reset the puzzle setup state
+                dispatch({ type: 'SET_PUZZLE_SETUP_STATE', payload: 'PRE_SETUP' });
+                
+                // CRITICAL FIX: Don't call START_SESSION as it resets the session data
+                // Only update isActive flag if needed
+                if (!state.session.isActive) {
+                    console.log('Session not active, updating active flag only');
+                    dispatch({ 
+                        type: 'UPDATE_SESSION_ACTIVE', 
+                        payload: true 
+                    });
                 }
                 
-                // If there's no current puzzle, get the next one
-                if (!state.currentPuzzle) {
-                    const puzzle = await puzzleService.getNextSessionPuzzle();
-                    if (puzzle) {
-                        dispatch({ type: 'SET_CURRENT_PUZZLE', payload: puzzle });
-                    } else {
-                        throw new Error('Failed to get first puzzle for resumed session');
+                // Get a new puzzle for the resumed session
+                console.log('Fetching fresh puzzle for resumed session');
+                const puzzle = await puzzleService.getNextSessionPuzzle();
+                
+                if (puzzle) {
+                    console.log('Setting new puzzle for resumed session:', puzzle.id);
+                    dispatch({ type: 'SET_CURRENT_PUZZLE', payload: puzzle });
+                } else {
+                    console.log('No puzzles available, initializing new session');
+                    const totalPuzzles = puzzleService.initializeSession();
+                    dispatch({ type: 'SET_TOTAL_PUZZLES', payload: totalPuzzles });
+                    
+                    const newPuzzle = await puzzleService.getNextSessionPuzzle();
+                    if (newPuzzle) {
+                        console.log('Setting puzzle from new session:', newPuzzle.id);
+                        dispatch({ type: 'SET_CURRENT_PUZZLE', payload: newPuzzle });
                     }
                 }
+                
+                // Play resume sound
+                await playSound(SoundTypes.START_SESSION);
+                console.log('Session resumed successfully');
+                
+                // Log session data after resume is complete
+                logSessionData();
+            } else {
+                console.warn('No valid session to resume');
             }
         } catch (error) {
             console.error('Failed to resume session:', error);
+        } finally {
+            setTimeout(() => {
+                dispatch({ type: 'SET_LOADING', payload: false });
+                setIsTransitioningToPuzzle(false);
+                console.log('Resume session process completed');
+            }, 1000);
         }
     };
 
