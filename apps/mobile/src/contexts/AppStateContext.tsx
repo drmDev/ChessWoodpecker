@@ -1,7 +1,8 @@
 // AppStateContext.tsx
 import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react';
-import { Puzzle } from '../models/PuzzleModel';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Puzzle } from '../models/PuzzleModel';
+import { STORAGE_KEYS } from '../constants/storage';
 import { puzzleService } from '../services/PuzzleService';
 
 // Define puzzle attempt record structure
@@ -81,9 +82,6 @@ const AppStateContext = createContext<{
     state: ChessAppState;
     dispatch: React.Dispatch<Action>;
 } | undefined>(undefined);
-
-// Add storage key constant at the top
-const SESSION_STORAGE_KEY = '@chess_woodpecker/session';
 
 // Initial state with simplified session
 const initialState: ChessAppState = {
@@ -238,7 +236,7 @@ function appReducer(state: ChessAppState, action: Action): ChessAppState {
             };
             
             // Persist session after update
-            AsyncStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(newState.session))
+            AsyncStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(newState.session))
                 .catch(error => console.error('Failed to save session:', error));
             
             return newState;
@@ -272,7 +270,7 @@ function appReducer(state: ChessAppState, action: Action): ChessAppState {
             };
             
             // Persist session after update
-            AsyncStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(newState.session))
+            AsyncStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(newState.session))
                 .catch(error => console.error('Failed to save session:', error));
             
             return newState;
@@ -386,7 +384,7 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 totalPuzzlesInSession: state.totalPuzzlesInSession,
             };
 
-            AsyncStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(sessionData))
+            AsyncStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(sessionData))
                 .catch(error => console.error('Failed to save session state:', error));
         }
     }, [state.isSessionActive, state.puzzlesSolved, state.puzzlesAttempted]);

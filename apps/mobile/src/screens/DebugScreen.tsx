@@ -2,15 +2,14 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-const SESSION_STORAGE_KEY = '@chess_woodpecker/session';
+import { STORAGE_KEYS } from 'src/constants/storage';
 
 export const DebugScreen: React.FC = () => {
     const { theme } = useTheme();
 
     const handleLogSession = async () => {
         try {
-            const sessionData = await AsyncStorage.getItem(SESSION_STORAGE_KEY);
+            const sessionData = await AsyncStorage.getItem(STORAGE_KEYS.SESSION);
             console.log('Current Session Data:', sessionData ? JSON.parse(sessionData) : 'No session data');
         } catch (error) {
             console.error('Failed to log session:', error);
@@ -19,7 +18,7 @@ export const DebugScreen: React.FC = () => {
 
     const handleClearSession = async () => {
         try {
-            await AsyncStorage.removeItem(SESSION_STORAGE_KEY);
+            await AsyncStorage.removeItem(STORAGE_KEYS.SESSION);
             console.log('Session cleared successfully');
         } catch (error) {
             console.error('Failed to clear session:', error);

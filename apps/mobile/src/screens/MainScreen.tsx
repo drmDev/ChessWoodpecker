@@ -12,6 +12,7 @@ import { puzzleService } from '../services/PuzzleService';
 import { playSound, SoundTypes } from '../utils/sounds';
 import { Puzzle } from '../models/PuzzleModel';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { STORAGE_KEYS } from '../constants/storage';
 
 export const MainScreen: React.FC = () => {
     const { theme } = useTheme();
@@ -32,7 +33,7 @@ export const MainScreen: React.FC = () => {
 
     const checkForStoredSession = async () => {
         try {
-            const savedSession = await AsyncStorage.getItem('@chess_woodpecker/session');
+            const savedSession = await AsyncStorage.getItem(STORAGE_KEYS.SESSION);
             setHasStoredSession(!!savedSession);
         } catch (error) {
             console.error('Failed to check for stored session:', error);
@@ -193,7 +194,7 @@ export const MainScreen: React.FC = () => {
 
     const handleResumeSession = async () => {
         try {
-            const savedSessionData = await AsyncStorage.getItem('@chess_woodpecker/session');
+            const savedSessionData = await AsyncStorage.getItem(STORAGE_KEYS.SESSION);
             if (savedSessionData) {
                 const sessionState = JSON.parse(savedSessionData);
                 dispatch({ type: 'LOAD_STORED_SESSION', payload: sessionState });
@@ -216,7 +217,7 @@ export const MainScreen: React.FC = () => {
 
     const handleClearSession = async () => {
         try {
-            await AsyncStorage.removeItem('@chess_woodpecker/session');
+            await AsyncStorage.removeItem(STORAGE_KEYS.SESSION);
             setHasStoredSession(false);
             console.log('Session cleared');
         } catch (error) {
