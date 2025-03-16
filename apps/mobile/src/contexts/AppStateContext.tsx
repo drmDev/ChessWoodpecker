@@ -1,5 +1,5 @@
 // AppStateContext.tsx
-import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useRef, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Puzzle } from '../models/PuzzleModel';
 import { STORAGE_KEYS } from '../constants/storage';
@@ -74,6 +74,8 @@ type Action =
 const AppStateContext = createContext<{
     state: ChessAppState;
     dispatch: React.Dispatch<Action>;
+    loadStoredSession: () => Promise<boolean>;
+    clearStoredSession: () => Promise<boolean>;
 } | undefined>(undefined);
 
 // Initial state with simplified session
@@ -264,6 +266,11 @@ function appReducer(state: ChessAppState, action: Action): ChessAppState {
             return {
                 ...state,
                 ...action.payload,
+                // Ensure we don't overwrite these properties if they're not in the payload
+                theme: action.payload.theme || state.theme,
+                isLoading: false,
+                puzzleTransitionState: 'STABLE',
+                puzzleSetupState: 'PRE_SETUP'
             };
             
         case 'SET_TOTAL_PUZZLES':
@@ -332,11 +339,20 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     // Save session state to AsyncStorage whenever it changes - simplified
     useEffect(() => {
+        // Only save session if it's active
         if (state.session.isActive) {
-            AsyncStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(state.session))
+            // Create a simplified version of the state to store
+            const stateToStore = {
+                session: state.session,
+                currentPuzzle: state.currentPuzzle,
+                totalPuzzlesInSession: state.totalPuzzlesInSession,
+                theme: state.theme
+            };
+            
+            AsyncStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(stateToStore))
                 .catch(error => console.error('Failed to save session state:', error));
         }
-    }, [state.session]);
+    }, [state.session, state.currentPuzzle, state.totalPuzzlesInSession]);
 
     // Update total puzzles when session starts
     useEffect(() => {
@@ -349,8 +365,42 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
     }, [state.session.isActive, state.session.startTime]);
 
+    // Add a function to load stored session
+    const loadStoredSession = useCallback(async () => {
+        try {
+            const savedSessionData = await AsyncStorage.getItem(STORAGE_KEYS.SESSION);
+            if (savedSessionData) {
+                const storedState = JSON.parse(savedSessionData);
+                dispatch({ type: 'LOAD_STORED_SESSION', payload: storedState });
+                return true;
+            }
+        } catch (error) {
+            console.error('Failed to load stored session:', error);
+        }
+        return false;
+    }, [dispatch]);
+
+    // Add a function to clear stored session
+    const clearStoredSession = useCallback(async () => {
+        try {
+            await AsyncStorage.removeItem(STORAGE_KEYS.SESSION);
+            return true;
+        } catch (error) {
+            console.error('Failed to clear stored session:', error);
+            return false;
+        }
+    }, []);
+
+    // Update the context value to include these functions
+    const contextValue = {
+        state,
+        dispatch,
+        loadStoredSession,
+        clearStoredSession
+    };
+
     return (
-        <AppStateContext.Provider value={{ state, dispatch }}>
+        <AppStateContext.Provider value={contextValue}>
             {children}
         </AppStateContext.Provider>
     );

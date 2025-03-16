@@ -16,7 +16,7 @@ import { STORAGE_KEYS } from '../constants/storage';
 
 export const MainScreen: React.FC = () => {
     const { theme } = useTheme();
-    const { state, dispatch } = useAppState();
+    const { state, dispatch, loadStoredSession, clearStoredSession } = useAppState();
     const [isPuzzleSetupComplete, setIsPuzzleSetupComplete] = useState(false);
     const [isTransitioningToPuzzle, setIsTransitioningToPuzzle] = useState(false);
     const [_, setIsInteractingWithBoard] = useState(false);
@@ -193,20 +193,22 @@ export const MainScreen: React.FC = () => {
 
     const handleResumeSession = async () => {
         try {
-            const savedSessionData = await AsyncStorage.getItem(STORAGE_KEYS.SESSION);
-            if (savedSessionData) {
-                const sessionState = JSON.parse(savedSessionData);
-                dispatch({ type: 'LOAD_STORED_SESSION', payload: sessionState });
+            const success = await loadStoredSession();
+            
+            if (success) {
+                // Initialize a new session with shuffled puzzles if needed
+                if (puzzleService.getRemainingPuzzleCount() === 0) {
+                    puzzleService.initializeSession();
+                }
                 
-                // Initialize a new session with shuffled puzzles
-                puzzleService.initializeSession();
-                
-                // Get the first puzzle from the session
-                const puzzle = await puzzleService.getNextSessionPuzzle();
-                if (puzzle) {
-                    dispatch({ type: 'SET_CURRENT_PUZZLE', payload: puzzle });
-                } else {
-                    throw new Error('Failed to get first puzzle for resumed session');
+                // If there's no current puzzle, get the next one
+                if (!state.currentPuzzle) {
+                    const puzzle = await puzzleService.getNextSessionPuzzle();
+                    if (puzzle) {
+                        dispatch({ type: 'SET_CURRENT_PUZZLE', payload: puzzle });
+                    } else {
+                        throw new Error('Failed to get first puzzle for resumed session');
+                    }
                 }
             }
         } catch (error) {
@@ -215,12 +217,10 @@ export const MainScreen: React.FC = () => {
     };
 
     const handleClearSession = async () => {
-        try {
-            await AsyncStorage.removeItem(STORAGE_KEYS.SESSION);
+        const success = await clearStoredSession();
+        if (success) {
             setHasStoredSession(false);
             console.log('Session cleared');
-        } catch (error) {
-            console.error('Failed to clear session:', error);
         }
     };
 
