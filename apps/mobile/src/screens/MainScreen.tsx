@@ -20,6 +20,7 @@ export const MainScreen: React.FC = () => {
     // Simplified state
     const isPuzzleActive = !!state.currentPuzzle;
 
+    // Fetch the next puzzle from the session
     const handleFetchNewPuzzle = async () => {
         console.log('Fetching New Puzzle:', {
             currentPuzzleId: state.currentPuzzle?.id,
@@ -50,6 +51,7 @@ export const MainScreen: React.FC = () => {
         }
     };
 
+    // THIS IS ONLY FOR DEBUGGING PURPOSES
     // Add this effect to monitor puzzle transitions
     useEffect(() => {
         if (state.currentPuzzle) {
@@ -62,6 +64,7 @@ export const MainScreen: React.FC = () => {
         }
     }, [state.currentPuzzle, state.isLoading, isTransitioningToPuzzle, isPuzzleSetupComplete]);
 
+    // Puzzle game state and actions
     const {
         currentPosition,
         currentMoveIndex,
