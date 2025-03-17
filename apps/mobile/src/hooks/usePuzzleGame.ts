@@ -4,7 +4,7 @@ import { validatePuzzleMove, UserMove } from '../utils/chess/PuzzleMoveValidator
 import { playSound, SoundTypes } from '../utils/sounds';
 import { PuzzleSetupState, PuzzleTransitionState, useAppState } from '../contexts/AppStateContext';
 import { Puzzle } from '../models/PuzzleModel';
-import { extractMoveComponents, isPromotionMove, replayMoves, getMoveType } from '../utils/chess/PuzzleLogic';
+import { extractMoveComponents, isPromotionMove, getMoveType } from '../utils/chess/PuzzleLogic';
 import { triggerHaptic } from '../utils/haptics';
 
 interface PuzzleGameState {
@@ -57,7 +57,7 @@ export function usePuzzleGame(
     dispatch({ type: 'SET_PUZZLE_SETUP_STATE', payload: newState });
   }, [dispatch]);
 
-  // Reset game state when a new puzzle is loaded
+  // Simplify the reset game effect to focus only on puzzle mechanics
   useEffect(() => {
     const puzzle = state.currentPuzzle;
     if (puzzle) {
@@ -88,7 +88,6 @@ export function usePuzzleGame(
           setPuzzleSetupState('SETUP_COMPLETE');
         } catch (error) {
           console.error('Error during puzzle setup:', error);
-          // Reset to pre-setup on error
           setPuzzleSetupState('PRE_SETUP');
         }
       };
@@ -238,6 +237,7 @@ export function usePuzzleGame(
     chessInstance
   ]);
 
+  // Simplify resetGame to focus on puzzle mechanics
   const resetGame = useCallback((puzzle: Puzzle) => {
     setPuzzleSetupState('PRE_SETUP');
     chessInstance.load(puzzle.fen);
@@ -278,6 +278,7 @@ export function usePuzzleGame(
     }
   }, [state.currentPuzzle, chessInstance, makeMove, onPuzzleComplete, setTransitionState]);
 
+  // Simplify handlePuzzleSuccess to focus on core mechanics
   const handlePuzzleSuccess = useCallback(async () => {
     if (!state.currentPuzzle) return;
 
@@ -291,7 +292,7 @@ export function usePuzzleGame(
       console.error('Error in puzzle success handling:', error);
       setTransitionState('STABLE');
     }
-  }, [state.currentPuzzle, dispatch, setTransitionState, onPuzzleComplete]);
+  }, [state.currentPuzzle, setTransitionState, onPuzzleComplete]);
 
   const handlePuzzleFailure = useCallback(async () => {
     if (!state.currentPuzzle) return;
