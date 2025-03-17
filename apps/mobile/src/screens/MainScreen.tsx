@@ -17,7 +17,7 @@ export const MainScreen: React.FC = () => {
     const [isTransitioningToPuzzle, setIsTransitioningToPuzzle] = useState(false);
     const [isInteractingWithBoard, setIsInteractingWithBoard] = useState(false);
     
-    // Simplified state
+    // Simplified puzzle state
     const isPuzzleActive = !!state.currentPuzzle;
 
     // Fetch the next puzzle from the session
@@ -33,7 +33,7 @@ export const MainScreen: React.FC = () => {
             dispatch({ type: 'SET_LOADING', payload: true });
             
             // Get the next puzzle from the session
-            const puzzle = await puzzleService.getNextSessionPuzzle();
+            const puzzle = await puzzleService.getNextPuzzle();
             
             if (puzzle) {
                 dispatch({ type: 'SET_CURRENT_PUZZLE', payload: puzzle });
@@ -149,10 +149,10 @@ export const MainScreen: React.FC = () => {
             dispatch({ type: 'SET_LOADING', payload: true });
             
             // Initialize puzzles
-            puzzleService.initializeSession();
+            puzzleService.initializeRandomPuzzles();
             
             // Get the first puzzle
-            const puzzle = await puzzleService.getNextSessionPuzzle();
+            const puzzle = await puzzleService.getNextPuzzle();
             if (puzzle) {
                 dispatch({ type: 'SET_CURRENT_PUZZLE', payload: puzzle });
             } else {
@@ -168,6 +168,28 @@ export const MainScreen: React.FC = () => {
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
             <ErrorBoundary>
+                {/* Add header bar when puzzle is active */}
+                {isPuzzleActive && (
+                    <View style={[styles.headerBar, { backgroundColor: theme.surface, borderBottomColor: theme.border}]}>
+                        <Text style={[styles.headerText, { color: theme.text}]}>
+                            Puzzle {puzzleService.getCurrentPuzzleIndex()}/200
+                        </Text>
+                        <TouchableOpacity
+                            style={[styles.endSessionButton, { backgroundColor: theme.error }]}
+                            onPress={() => {
+                                // Reset puzzle state
+                                dispatch({ type: 'SET_CURRENT_PUZZLE', payload: null as any });
+                                setIsPuzzleSetupComplete(false);
+                                // end session
+                                puzzleService.resetPuzzleIndex();
+                            }}
+                        >
+                            <Text style={styles.endSessionButtonText}>End Session</Text>
+                        </TouchableOpacity>
+
+                    </View>               
+                )}
+
                 <ScrollView 
                     contentContainerStyle={styles.contentContainer}
                     style={styles.content}
@@ -259,5 +281,26 @@ const styles = StyleSheet.create({
         color: 'white',
         fontSize: 16,
         fontWeight: 'bold',
-    }
+    },
+    headerBar: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 12,
+        borderBottomWidth: 1,
+    },
+    headerText: {
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
+    endSessionButton: {
+        paddingVertical: 6,
+        paddingHorizontal: 12,
+        borderRadius: 4,
+    },
+    endSessionButtonText: {
+        color: 'white',
+        fontWeight: 'bold',
+        fontSize: 14,
+    },
 });
