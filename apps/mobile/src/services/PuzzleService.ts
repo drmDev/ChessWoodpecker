@@ -187,24 +187,11 @@ class PuzzleService {
   }
 
   /**
-   * For backward compatibility with existing code
+   * Gets the current puzzle index
+   * @returns The current puzzle index
    */
-  initializeSession(): number {
-    return this.initializeRandomPuzzles();
-  }
-
-  /**
-   * For backward compatibility with existing code
-   */
-  async getNextSessionPuzzle(): Promise<Puzzle | null> {
-    return this.getNextPuzzle();
-  }
-
-  /**
-   * For backward compatibility with existing code
-   */
-  clearSession(): void {
-    this.resetPuzzleIndex();
+  getCurrentPuzzleIndex(): number {
+    return this.currentPuzzleIndex;
   }
 }
 
