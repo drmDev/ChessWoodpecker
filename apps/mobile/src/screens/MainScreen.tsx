@@ -7,7 +7,6 @@ import { TurnIndicator } from '../components/chess/mobile/TurnIndicator';
 import { usePuzzleGame } from '../hooks/usePuzzleGame';
 import { ErrorBoundary } from '../components/shared/ErrorBoundary';
 import { LoadingOverlay } from '../components/shared/LoadingOverlay';
-import { SessionStatusBar } from '../components/session/SessionStatusBar';
 import { puzzleService } from '../services/PuzzleService';
 import { playSound, SoundTypes } from '../utils/sounds';
 import { Puzzle } from '../models/PuzzleModel';
@@ -258,10 +257,6 @@ export const MainScreen: React.FC = () => {
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
             <ErrorBoundary>
-                {isSessionActive && (
-                    <SessionStatusBar />
-                )}
-                
                 <ScrollView 
                     contentContainerStyle={styles.contentContainer}
                     style={styles.content}
