@@ -5,10 +5,7 @@ import { playSound, SoundTypes } from '../utils/sounds';
 import { PuzzleSetupState, PuzzleTransitionState, useAppState } from '../contexts/AppStateContext';
 import { Puzzle } from '../models/PuzzleModel';
 import { extractMoveComponents, isPromotionMove, replayMoves, getMoveType } from '../utils/chess/PuzzleLogic';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { triggerHaptic } from '../utils/haptics';
-import { STORAGE_KEYS } from 'src/constants/storage';
-
 
 interface PuzzleGameState {
   currentPosition: string | null;
@@ -287,25 +284,14 @@ export function usePuzzleGame(
     setTransitionState('TRANSITIONING');
 
     try {
-      await playSound(SoundTypes.SUCCESS);
-      
-      dispatch({
-        type: 'RECORD_SUCCESSFUL_PUZZLE',
-        payload: {
-          id: state.currentPuzzle.id,
-          theme: state.currentPuzzle.theme || 'Uncategorized'
-        }
-      });
-
-      await AsyncStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(state.session));
-      
+      await playSound(SoundTypes.SUCCESS);      
       setTransitionState('LOADING');
       onPuzzleComplete();
     } catch (error) {
       console.error('Error in puzzle success handling:', error);
       setTransitionState('STABLE');
     }
-  }, [state.currentPuzzle, state.session, dispatch, setTransitionState, onPuzzleComplete]);
+  }, [state.currentPuzzle, dispatch, setTransitionState, onPuzzleComplete]);
 
   const handlePuzzleFailure = useCallback(async () => {
     if (!state.currentPuzzle) return;
@@ -329,14 +315,6 @@ export function usePuzzleGame(
       
       // Pause to let user see we've reset
       await new Promise(resolve => setTimeout(resolve, 1000));
-
-      dispatch({
-        type: 'RECORD_FAILED_PUZZLE',
-        payload: {
-          id: state.currentPuzzle.id,
-          theme: state.currentPuzzle.theme || 'Uncategorized'
-        }
-      });
 
       // Now start auto-solve with clear indication
       setTransitionState('AUTO_SOLVING');
