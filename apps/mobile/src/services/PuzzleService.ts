@@ -13,18 +13,20 @@ const BACKEND_URL = 'https://chesswoodpecker-production-8791.up.railway.app/api'
 
 class PuzzleService {
   private baseUrl: string;
-  private sessionPuzzleQueue: string[] = [];
-  private MAX_SESSION_PUZZLES = 200;
+  private randomizedPuzzleIds: string[] = [];
+  private currentPuzzleIndex: number = 0;
+  private MAX_PUZZLES = 200;
 
   constructor() {
     this.baseUrl = BACKEND_URL;
+    this.initializeRandomPuzzles();
   }
 
   /**
-   * Initializes a new session with a randomized queue of puzzle IDs
-   * @returns The number of puzzles in the queue
+   * Initializes a randomized list of puzzle IDs
+   * @returns The number of puzzles in the list
    */
-  initializeSession(): number {
+  initializeRandomPuzzles(): number {
     // Get all puzzle IDs from the collection
     const allPuzzleIds: string[] = [];
     Object.values(defaultCollection).forEach(ids => {
@@ -38,24 +40,26 @@ class PuzzleService {
       [shuffledIds[i], shuffledIds[j]] = [shuffledIds[j], shuffledIds[i]];
     }
 
-    // Take only the first MAX_SESSION_PUZZLES puzzles
-    this.sessionPuzzleQueue = shuffledIds.slice(0, this.MAX_SESSION_PUZZLES);
+    // Take only the first MAX_PUZZLES puzzles
+    this.randomizedPuzzleIds = shuffledIds.slice(0, this.MAX_PUZZLES);
+    this.currentPuzzleIndex = 0;
     
-    return this.sessionPuzzleQueue.length;
+    return this.randomizedPuzzleIds.length;
   }
 
   /**
-   * Gets the next puzzle from the session queue
-   * @returns Processed puzzle data or null if queue is empty
+   * Gets the next puzzle from the randomized list
+   * @returns Processed puzzle data or null if no more puzzles
    */
-  async getNextSessionPuzzle(): Promise<Puzzle | null> {
-    // If queue is empty, return null
-    if (this.sessionPuzzleQueue.length === 0) {
+  async getNextPuzzle(): Promise<Puzzle | null> {
+    // If we've gone through all puzzles, return null
+    if (this.currentPuzzleIndex >= this.randomizedPuzzleIds.length) {
       return null;
     }
 
-    // Get the next puzzle ID from the queue
-    const nextPuzzleId = this.sessionPuzzleQueue.shift();
+    // Get the next puzzle ID from the list
+    const nextPuzzleId = this.randomizedPuzzleIds[this.currentPuzzleIndex];
+    this.currentPuzzleIndex++;
     
     if (!nextPuzzleId) {
       return null;
@@ -66,9 +70,34 @@ class PuzzleService {
       const puzzle = await this.fetchPuzzleById(nextPuzzleId, false);
       return puzzle;
     } catch (error) {
-      console.error(`Failed to fetch puzzle ${nextPuzzleId} for session:`, error);
+      console.error(`Failed to fetch puzzle ${nextPuzzleId}:`, error);
       // If we fail to fetch a puzzle, try to get the next one
-      return this.getNextSessionPuzzle();
+      return this.getNextPuzzle();
+    }
+  }
+
+  /**
+   * Gets a random puzzle from the collection
+   * @returns Processed puzzle data or null if failed
+   */
+  async getRandomPuzzle(): Promise<Puzzle | null> {
+    const allPuzzleIds: string[] = [];
+    Object.values(defaultCollection).forEach(ids => {
+      allPuzzleIds.push(...(ids as string[]));
+    });
+    
+    if (allPuzzleIds.length === 0) {
+      return null;
+    }
+    
+    const randomIndex = Math.floor(Math.random() * allPuzzleIds.length);
+    const randomId = allPuzzleIds[randomIndex];
+    
+    try {
+      return await this.fetchPuzzleById(randomId, false);
+    } catch (error) {
+      console.error(`Failed to fetch random puzzle ${randomId}:`, error);
+      return null;
     }
   }
 
@@ -143,18 +172,39 @@ class PuzzleService {
   }
 
   /**
-   * Gets the remaining number of puzzles in the session queue
+   * Gets the remaining number of puzzles in the randomized list
    * @returns The number of puzzles remaining
    */
   getRemainingPuzzleCount(): number {
-    return this.sessionPuzzleQueue.length;
+    return Math.max(0, this.randomizedPuzzleIds.length - this.currentPuzzleIndex);
   }
 
   /**
-   * Clears the current session puzzle queue
+   * Resets the puzzle index to start over
+   */
+  resetPuzzleIndex(): void {
+    this.currentPuzzleIndex = 0;
+  }
+
+  /**
+   * For backward compatibility with existing code
+   */
+  initializeSession(): number {
+    return this.initializeRandomPuzzles();
+  }
+
+  /**
+   * For backward compatibility with existing code
+   */
+  async getNextSessionPuzzle(): Promise<Puzzle | null> {
+    return this.getNextPuzzle();
+  }
+
+  /**
+   * For backward compatibility with existing code
    */
   clearSession(): void {
-    this.sessionPuzzleQueue = [];
+    this.resetPuzzleIndex();
   }
 }
 

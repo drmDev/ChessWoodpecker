@@ -4,11 +4,8 @@ import { validatePuzzleMove, UserMove } from '../utils/chess/PuzzleMoveValidator
 import { playSound, SoundTypes } from '../utils/sounds';
 import { PuzzleSetupState, PuzzleTransitionState, useAppState } from '../contexts/AppStateContext';
 import { Puzzle } from '../models/PuzzleModel';
-import { extractMoveComponents, isPromotionMove, replayMoves, getMoveType } from '../utils/chess/PuzzleLogic';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { extractMoveComponents, isPromotionMove, getMoveType } from '../utils/chess/PuzzleLogic';
 import { triggerHaptic } from '../utils/haptics';
-import { STORAGE_KEYS } from 'src/constants/storage';
-
 
 interface PuzzleGameState {
   currentPosition: string | null;
@@ -60,7 +57,7 @@ export function usePuzzleGame(
     dispatch({ type: 'SET_PUZZLE_SETUP_STATE', payload: newState });
   }, [dispatch]);
 
-  // Reset game state when a new puzzle is loaded
+  // Simplify the reset game effect to focus only on puzzle mechanics
   useEffect(() => {
     const puzzle = state.currentPuzzle;
     if (puzzle) {
@@ -91,7 +88,6 @@ export function usePuzzleGame(
           setPuzzleSetupState('SETUP_COMPLETE');
         } catch (error) {
           console.error('Error during puzzle setup:', error);
-          // Reset to pre-setup on error
           setPuzzleSetupState('PRE_SETUP');
         }
       };
@@ -241,6 +237,7 @@ export function usePuzzleGame(
     chessInstance
   ]);
 
+  // Simplify resetGame to focus on puzzle mechanics
   const resetGame = useCallback((puzzle: Puzzle) => {
     setPuzzleSetupState('PRE_SETUP');
     chessInstance.load(puzzle.fen);
@@ -281,31 +278,21 @@ export function usePuzzleGame(
     }
   }, [state.currentPuzzle, chessInstance, makeMove, onPuzzleComplete, setTransitionState]);
 
+  // Simplify handlePuzzleSuccess to focus on core mechanics
   const handlePuzzleSuccess = useCallback(async () => {
     if (!state.currentPuzzle) return;
 
     setTransitionState('TRANSITIONING');
 
     try {
-      await playSound(SoundTypes.SUCCESS);
-      
-      dispatch({
-        type: 'RECORD_SUCCESSFUL_PUZZLE',
-        payload: {
-          id: state.currentPuzzle.id,
-          theme: state.currentPuzzle.theme || 'Uncategorized'
-        }
-      });
-
-      await AsyncStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(state.session));
-      
+      await playSound(SoundTypes.SUCCESS);      
       setTransitionState('LOADING');
       onPuzzleComplete();
     } catch (error) {
       console.error('Error in puzzle success handling:', error);
       setTransitionState('STABLE');
     }
-  }, [state.currentPuzzle, state.session, dispatch, setTransitionState, onPuzzleComplete]);
+  }, [state.currentPuzzle, setTransitionState, onPuzzleComplete]);
 
   const handlePuzzleFailure = useCallback(async () => {
     if (!state.currentPuzzle) return;
@@ -329,14 +316,6 @@ export function usePuzzleGame(
       
       // Pause to let user see we've reset
       await new Promise(resolve => setTimeout(resolve, 1000));
-
-      dispatch({
-        type: 'RECORD_FAILED_PUZZLE',
-        payload: {
-          id: state.currentPuzzle.id,
-          theme: state.currentPuzzle.theme || 'Uncategorized'
-        }
-      });
 
       // Now start auto-solve with clear indication
       setTransitionState('AUTO_SOLVING');
