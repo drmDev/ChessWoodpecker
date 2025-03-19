@@ -15,9 +15,34 @@ export const sharedStyles = StyleSheet.create({
     borderRadius: 6,
   },
   actionButtonText: {
+    textAlign: 'center',
     color: 'white',
     fontWeight: 'bold',
     fontSize: 14,
   },
-  // Add more shared styles as needed
+  headerText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  sectionContainer: {
+    flex: 1,
+    margin: 16,
+  },
+  welcomeContainer: {
+    borderRadius: 8,
+    borderWidth: 1,
+    margin: 16,
+    padding: 16,
+  },
+  welcomeTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  welcomeText: {
+    fontSize: 16,
+    marginBottom: 24,
+    textAlign: 'center',
+  },
 });
