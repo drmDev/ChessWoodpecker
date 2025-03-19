@@ -148,6 +148,9 @@ export const MainScreen: React.FC = () => {
             setIsPuzzleSetupComplete(false);
             setIsTransitioningToPuzzle(true);
             dispatch({ type: 'SET_LOADING', payload: true });
+
+            // Reset elapsed time when starting a new session
+            dispatch({ type: 'SET_ELAPSED_TIME', payload: 0 });
             
             // Initialize puzzles
             puzzleService.initializeRandomPuzzles();
@@ -178,6 +181,8 @@ export const MainScreen: React.FC = () => {
                             setIsPuzzleSetupComplete(false);
                             // end session
                             puzzleService.resetPuzzleIndex();
+                            // Reset timer
+                            dispatch({ type: 'SET_ELAPSED_TIME', payload: 0 });
                         }}
                     />
                 )}

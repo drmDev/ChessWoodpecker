@@ -13,6 +13,7 @@ interface ChessAppState {
     theme: 'light' | 'dark';
     puzzleTransitionState: PuzzleTransitionState;
     puzzleSetupState: PuzzleSetupState;
+    elapsedTime: number;
 }
 
 // Minimal actions
@@ -21,7 +22,9 @@ type Action =
     | { type: 'SET_LOADING'; payload: boolean }
     | { type: 'TOGGLE_THEME' }
     | { type: 'SET_PUZZLE_TRANSITION_STATE'; payload: PuzzleTransitionState }
-    | { type: 'SET_PUZZLE_SETUP_STATE'; payload: PuzzleSetupState };
+    | { type: 'SET_PUZZLE_SETUP_STATE'; payload: PuzzleSetupState }
+    | { type: 'SET_ELAPSED_TIME'; payload: number }
+    | { type: 'UPDATE_TIME_DELTA'; payload: number };
 
 const AppStateContext = createContext<{
     state: ChessAppState;
@@ -34,7 +37,8 @@ const initialState: ChessAppState = {
     isLoading: false,
     theme: 'light',
     puzzleTransitionState: 'STABLE',
-    puzzleSetupState: 'PRE_SETUP'
+    puzzleSetupState: 'PRE_SETUP',
+    elapsedTime: 0
 };
 
 // Minimal reducer
@@ -69,6 +73,18 @@ function appReducer(state: ChessAppState, action: Action): ChessAppState {
             return {
                 ...state,
                 puzzleSetupState: action.payload
+            };
+
+        case 'SET_ELAPSED_TIME':
+            return {
+                ...state,
+                elapsedTime: action.payload
+            };
+
+        case 'UPDATE_TIME_DELTA':
+            return {
+                ...state,
+                elapsedTime: state.elapsedTime + action.payload
             };
 
         default:

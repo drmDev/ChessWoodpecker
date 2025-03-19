@@ -4,12 +4,34 @@
  * This service handles starting, stopping, and updating timers without relying on React's useEffect.
  * It dispatches actions to update the application state when the timer ticks.
  */
+import { AppState, AppStateStatus } from 'react-native';
+
 export class TimerService {
   private timer: NodeJS.Timeout | null = null;
   private lastTick: number | null = null;
   private dispatch: Function | null = null;
   private tickInterval: number = 1000; // Default to 1 second
   private isPaused: boolean = false;
+  private appStateSubscription: any = null;
+
+  constructor() {
+    // Set up app state change listener when service is created
+    this.appStateSubscription = AppState.addEventListener('change', this.handleAppStateChange);
+  }
+
+  private handleAppStateChange = (nextAppState: AppStateStatus) => {
+    if (nextAppState === 'active') {
+      // App came to foreground - resume timer
+      if (this.timer && this.isPaused) {
+        this.resume();
+      }
+    } else if (nextAppState === 'background' || nextAppState === 'inactive') {
+      // App went to background - pause timer
+      if (this.timer && !this.isPaused) {
+        this.pause();
+      }
+    }
+  }
 
   /**
    * Sets the dispatch function to be used for sending actions
@@ -96,6 +118,12 @@ export class TimerService {
   cleanup(): void {
     this.stop();
     this.dispatch = null;
+
+    // Remove app state listener when cleaning up
+    if (this.appStateSubscription) {
+      this.appStateSubscription.remove();
+      this.appStateSubscription = null;
+    }
   }
 
   /**
