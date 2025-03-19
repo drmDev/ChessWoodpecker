@@ -9,6 +9,7 @@ import { ErrorBoundary } from '../components/shared/ErrorBoundary';
 import { usePuzzleGame } from '../hooks/usePuzzleGame';
 import { puzzleService } from '../services/PuzzleService';
 import { playSound, SoundTypes } from '../utils/sounds';
+import { SessionStatusBar } from '../components/session/SessionStatusBar';
 
 export const MainScreen: React.FC = () => {
     const { theme } = useTheme();
@@ -147,6 +148,9 @@ export const MainScreen: React.FC = () => {
             setIsPuzzleSetupComplete(false);
             setIsTransitioningToPuzzle(true);
             dispatch({ type: 'SET_LOADING', payload: true });
+
+            // Reset elapsed time when starting a new session
+            dispatch({ type: 'SET_ELAPSED_TIME', payload: 0 });
             
             // Initialize puzzles
             puzzleService.initializeRandomPuzzles();
@@ -170,24 +174,17 @@ export const MainScreen: React.FC = () => {
             <ErrorBoundary>
                 {/* Add header bar when puzzle is active */}
                 {isPuzzleActive && (
-                    <View style={[styles.headerBar, { backgroundColor: theme.surface, borderBottomColor: theme.border}]}>
-                        <Text style={[styles.headerText, { color: theme.text}]}>
-                            Puzzle {puzzleService.getCurrentPuzzleIndex()}/200
-                        </Text>
-                        <TouchableOpacity
-                            style={[styles.endSessionButton, { backgroundColor: theme.error }]}
-                            onPress={() => {
-                                // Reset puzzle state
-                                dispatch({ type: 'SET_CURRENT_PUZZLE', payload: null as any });
-                                setIsPuzzleSetupComplete(false);
-                                // end session
-                                puzzleService.resetPuzzleIndex();
-                            }}
-                        >
-                            <Text style={styles.endSessionButtonText}>End Session</Text>
-                        </TouchableOpacity>
-
-                    </View>               
+                    <SessionStatusBar
+                        onEndSession={() => {
+                            // reset puzzle state
+                            dispatch({ type: 'SET_CURRENT_PUZZLE', payload: null as any});
+                            setIsPuzzleSetupComplete(false);
+                            // end session
+                            puzzleService.resetPuzzleIndex();
+                            // Reset timer
+                            dispatch({ type: 'SET_ELAPSED_TIME', payload: 0 });
+                        }}
+                    />
                 )}
 
                 <ScrollView 
