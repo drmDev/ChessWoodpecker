@@ -10,6 +10,8 @@ import { usePuzzleGame } from '../hooks/usePuzzleGame';
 import { puzzleService } from '../services/PuzzleService';
 import { playSound, SoundTypes } from '../utils/sounds';
 import { SessionStatusBar } from '../components/session/SessionStatusBar';
+import { sharedStyles } from '../styles/shared';
+import { SEMANTIC_COLORS } from '../constants/colors';
 
 export const MainScreen: React.FC = () => {
     const { theme } = useTheme();
@@ -176,6 +178,8 @@ export const MainScreen: React.FC = () => {
                 {isPuzzleActive && (
                     <SessionStatusBar
                         onEndSession={() => {
+                            // play end session sound
+                            playSound(SoundTypes.END_SESSION);
                             // reset puzzle state
                             dispatch({ type: 'SET_CURRENT_PUZZLE', payload: null as any});
                             setIsPuzzleSetupComplete(false);
@@ -207,20 +211,20 @@ export const MainScreen: React.FC = () => {
                     
                     {!isPuzzleActive && (
                         <TouchableOpacity
-                            style={[styles.welcomeContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}
+                            style={[sharedStyles.welcomeContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}
                         >
-                            <Text style={[styles.welcomeTitle, { color: theme.text }]}>
-                                Welcome to Chess Puzzles
+                            <Text style={[sharedStyles.welcomeTitle, { color: theme.text }]}>
+                                Welcome to Chess Woodpecker!
                             </Text>
-                            <Text style={[styles.welcomeText, { color: theme.textSecondary }]}>
-                                Start solving puzzles to improve your chess skills.
+                            <Text style={[sharedStyles.welcomeText, { color: theme.textSecondary }]}>
+                                Start solving puzzles to improve your chess skills and have fun!
                             </Text>
                             
                             <TouchableOpacity
-                                style={[styles.actionButton, { backgroundColor: theme.primary }]}
+                                style={[sharedStyles.actionButton, { backgroundColor: theme.primary }]}
                                 onPress={handleStartPuzzles}
                             >
-                                <Text style={styles.actionButtonText}>Start Puzzles</Text>
+                                <Text style={sharedStyles.actionButtonText}>Start Puzzles</Text>
                             </TouchableOpacity>
                         </TouchableOpacity>
                     )}
@@ -251,53 +255,5 @@ const styles = StyleSheet.create({
     boardContainer: {
         alignItems: 'center',
         marginVertical: 16,
-    },
-    welcomeContainer: {
-        borderRadius: 8,
-        borderWidth: 1,
-        margin: 16,
-        padding: 16,
-    },
-    welcomeTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        marginBottom: 12,
-        textAlign: 'center',
-    },
-    welcomeText: {
-        fontSize: 16,
-        marginBottom: 24,
-        textAlign: 'center',
-    },
-    actionButton: {
-        alignItems: 'center',
-        borderRadius: 8,
-        padding: 16,
-    },
-    actionButtonText: {
-        color: 'white',
-        fontSize: 16,
-        fontWeight: 'bold',
-    },
-    headerBar: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: 12,
-        borderBottomWidth: 1,
-    },
-    headerText: {
-        fontSize: 16,
-        fontWeight: 'bold',
-    },
-    endSessionButton: {
-        paddingVertical: 6,
-        paddingHorizontal: 12,
-        borderRadius: 4,
-    },
-    endSessionButtonText: {
-        color: 'white',
-        fontWeight: 'bold',
-        fontSize: 14,
     },
 });
