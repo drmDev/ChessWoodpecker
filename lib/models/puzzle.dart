@@ -1,5 +1,3 @@
-import 'package:chess/chess.dart' as chess;
-
 class Puzzle {
   final String id;
   final String fen;
@@ -38,4 +36,4 @@ class Puzzle {
       'attempts': attempts,
     };
   }
-} 
+}

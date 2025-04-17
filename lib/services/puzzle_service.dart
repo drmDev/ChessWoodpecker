@@ -1,25 +1,47 @@
 import 'dart:convert';
-import 'package:chess/chess.dart' as chess;
-import 'package:shared_preferences.dart';
+import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
 import '../models/puzzle.dart';
 
 class PuzzleService {
   static const String _completedPuzzlesKey = 'completed_puzzles';
   final SharedPreferences _prefs;
   final String _baseUrl;
+  Map<String, List<String>> _puzzleCollections = {};
+  bool _isInitialized = false;
 
-  PuzzleService(this._prefs, {String baseUrl = 'https://chesswoodpecker-production-8791.up.railway.app/api'})
+  // Mock puzzle for testing
+  static final Puzzle _mockPuzzle = Puzzle(
+    id: 'mock_puzzle_1',
+    fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+    solutionMoves: ['e2e4', 'e7e5', 'g1f3', 'b8c6'],
+    theme: 'OPENING',
+    isWhiteToMove: true,
+  );
+
+  PuzzleService(this._prefs,
+      {String baseUrl =
+          'https://chesswoodpecker-production-8791.up.railway.app/api'})
       : _baseUrl = baseUrl;
 
   // Fetch a puzzle by ID
   Future<Puzzle?> fetchPuzzle(String id) async {
+    // For testing, return the mock puzzle
+    if (id == 'test_puzzle_1') {
+      return _mockPuzzle;
+    }
+
     try {
-      final response = await Uri.parse('$_baseUrl/puzzles/$id').get();
+      final response = await http.get(Uri.parse('$_baseUrl/puzzles/$id'));
+
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+        final data = json.decode(response.body);
         return Puzzle.fromJson(data);
+      } else {
+        print('Failed to fetch puzzle: ${response.statusCode}');
+        return null;
       }
-      return null;
     } catch (e) {
       print('Error fetching puzzle: $e');
       return null;
@@ -51,4 +73,41 @@ class PuzzleService {
     final completedPuzzles = getCompletedPuzzles();
     return completedPuzzles.contains(puzzleId);
   }
-} 
+
+  // Load puzzle collections from JSON file
+  Future<void> loadPuzzleCollections() async {
+    if (_isInitialized) return;
+
+    try {
+      print('Loading puzzle collections from JSON file');
+      final String jsonString =
+          await rootBundle.loadString('assets/puzzles/default-collection.json');
+      final Map<String, dynamic> jsonData = json.decode(jsonString);
+
+      _puzzleCollections = Map.from(jsonData).map(
+        (key, value) => MapEntry(key, List<String>.from(value as List)),
+      );
+
+      print('Loaded puzzle collections: ${_puzzleCollections.keys.join(', ')}');
+      _isInitialized = true;
+    } catch (e) {
+      print('Error loading puzzle collections: $e');
+      _puzzleCollections = {};
+    }
+  }
+
+  // Get available themes
+  List<String> getAvailableThemes() {
+    return _puzzleCollections.keys.toList();
+  }
+
+  // Get puzzles for a specific theme
+  List<String> getPuzzlesForTheme(String theme) {
+    return _puzzleCollections[theme] ?? [];
+  }
+
+  // Get all puzzle collections
+  Map<String, List<String>> getPuzzleCollections() {
+    return Map.from(_puzzleCollections);
+  }
+}

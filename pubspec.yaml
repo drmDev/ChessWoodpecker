@@ -65,6 +65,8 @@ flutter:
   assets:
     - assets/pieces/
     - assets/sounds/
+    - assets/puzzles/
+    - assets/puzzles/default-collection.json
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

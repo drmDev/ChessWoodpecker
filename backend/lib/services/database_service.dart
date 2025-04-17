@@ -16,7 +16,7 @@ class DatabaseService {
   Future<void> connect() async {
     final env = DotEnv()..load();
     final connectionString = env['DATABASE_PUBLIC_URL'] ?? '';
-    
+
     final uri = Uri.parse(connectionString);
     _connection = await Connection.open(Endpoint(
       host: uri.host,
@@ -31,20 +31,22 @@ class DatabaseService {
     await _connection.close();
   }
 
-  Future<List<Map<String, dynamic>>> query(String sql, [List<dynamic>? params]) async {
+  Future<List<Map<String, dynamic>>> query(String sql,
+      [List<dynamic>? params]) async {
     final results = await _connection.execute(
       Sql.named(sql),
-      parameters: params != null ? Map.fromIterables(
-        List.generate(params.length, (i) => 'p$i'),
-        params
-      ) : {},
+      parameters: params != null
+          ? Map.fromIterables(
+              List.generate(params.length, (i) => 'p$i'), params)
+          : {},
     );
     return results.map((row) => row.toColumnMap()).toList();
   }
 
   Future<Puzzle?> getPuzzleById(String id) async {
     final results = await _connection.execute(
-      Sql.named('SELECT * FROM lichess_puzzle_cache WHERE lichess_puzzle_id = @id'),
+      Sql.named(
+          'SELECT * FROM lichess_puzzle_cache WHERE lichess_puzzle_id = @id'),
       parameters: {'id': id},
     );
 
@@ -76,4 +78,4 @@ class DatabaseService {
       theme: row['theme'] as String,
     );
   }
-} 
+}

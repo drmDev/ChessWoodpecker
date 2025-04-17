@@ -1,10 +1,10 @@
 import 'dart:io';
 import 'package:shelf/shelf_io.dart' as io;
-import '../lib/controllers/puzzle_controller.dart';
-import '../lib/services/puzzle_service.dart';
-import '../lib/services/session_service.dart';
-import '../lib/repositories/puzzle_repository.dart';
-import '../lib/services/database_service.dart';
+import 'package:chess_woodpecker_backend/controllers/puzzle_controller.dart';
+import 'package:chess_woodpecker_backend/services/puzzle_service.dart';
+import 'package:chess_woodpecker_backend/services/session_service.dart';
+import 'package:chess_woodpecker_backend/repositories/puzzle_repository.dart';
+import 'package:chess_woodpecker_backend/services/database_service.dart';
 
 void main(List<String> args) async {
   // Initialize services
