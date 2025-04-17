@@ -1,0 +1,19 @@
+   datasource db {
+     provider = "postgresql"
+     url      = env("DATABASE_PUBLIC_URL")
+   }
+
+   generator client {
+     provider = "prisma-client-js"
+   }
+
+    model LichessPuzzleCache {
+       id                 Int      @id @default(autoincrement())
+       lichess_puzzle_id  String   @unique
+       pgn                String
+       initial_ply        Int
+       solution           String[]
+       theme              String
+
+       @@map("lichess_puzzle_cache")
+   }
