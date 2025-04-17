@@ -40,4 +40,4 @@ class Puzzle {
       'theme': theme,
     };
   }
-} 
+}

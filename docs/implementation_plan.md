@@ -46,7 +46,6 @@
 - [ ] Chess board implementation
 - [ ] Navigation structure
 - [ ] State management setup
-- [ ] Theme system
 
 ### Phase 3: Core Features
 - [ ] Puzzle solving interface

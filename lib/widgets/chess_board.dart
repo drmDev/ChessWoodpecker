@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:chess/chess.dart' as chess;
 import 'dart:ui' as ui;
+import 'package:flutter/services.dart';
 
 class ChessBoard extends StatefulWidget {
   final String fen;
@@ -11,14 +12,14 @@ class ChessBoard extends StatefulWidget {
   final String? lastMoveTo;
 
   const ChessBoard({
-    Key? key,
+    super.key,
     required this.fen,
     this.isWhiteOrientation = true,
     required this.onMove,
     this.showCoordinates = true,
     this.lastMoveFrom,
     this.lastMoveTo,
-  }) : super(key: key);
+  });
 
   @override
   State<ChessBoard> createState() => _ChessBoardState();
@@ -29,6 +30,8 @@ class _ChessBoardState extends State<ChessBoard> {
   String? _draggedPiece;
   String? _dragStartSquare;
   final Map<String, ui.Image> _pieceImages = {};
+  Offset? _dragPosition;
+  final double _squareSize = 50.0; // Default square size
 
   @override
   void initState() {
@@ -43,32 +46,67 @@ class _ChessBoardState extends State<ChessBoard> {
   }
 
   Future<void> _loadPieceImages() async {
-    // TODO: Load piece images from assets
-    // This will be implemented when we add the assets
+    final pieceTypes = ['p', 'n', 'b', 'r', 'q', 'k'];
+    final colors = ['w', 'b'];
+
+    for (final color in colors) {
+      for (final type in pieceTypes) {
+        final pieceKey = '$color$type';
+        final assetPath = 'assets/pieces/$pieceKey.png';
+        try {
+          final data = await rootBundle.load(assetPath);
+          final codec =
+              await ui.instantiateImageCodec(data.buffer.asUint8List());
+          final frame = await codec.getNextFrame();
+          _pieceImages[pieceKey] = frame.image;
+        } catch (e) {
+          print('Error loading piece image: $e');
+        }
+      }
+    }
+
+    if (mounted) setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
-    return AspectRatio(
-      aspectRatio: 1,
-      child: Container(
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.black),
-        ),
-        child: GridView.builder(
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 8,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Calculate the size based on the available width
+        final size = constraints.maxWidth;
+        final squareSize = size / 8;
+
+        return Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.black),
           ),
-          itemCount: 64,
-          itemBuilder: (context, index) {
-            final file = index % 8;
-            final rank = index ~/ 8;
-            final square = _getSquareName(file, rank);
-            return _buildSquare(square, file, rank);
-          },
-        ),
-      ),
+          child: Stack(
+            children: [
+              GridView.builder(
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 8,
+                ),
+                itemCount: 64,
+                itemBuilder: (context, index) {
+                  final file = index % 8;
+                  final rank = index ~/ 8;
+                  final square = _getSquareName(file, rank);
+                  return _buildSquare(square, file, rank, squareSize);
+                },
+              ),
+              if (_draggedPiece != null && _dragPosition != null)
+                Positioned(
+                  left: _dragPosition!.dx - squareSize / 2,
+                  top: _dragPosition!.dy - squareSize / 2,
+                  child: _buildDraggedPiece(_draggedPiece!, squareSize),
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -78,22 +116,25 @@ class _ChessBoardState extends State<ChessBoard> {
     return '$fileChar$rankNum';
   }
 
-  Widget _buildSquare(String square, int file, int rank) {
+  Widget _buildSquare(String square, int file, int rank, double squareSize) {
     final isBlack = (file + rank) % 2 == 1;
     final piece = _chess.get(square);
     final isLastMoveFrom = square == widget.lastMoveFrom;
     final isLastMoveTo = square == widget.lastMoveTo;
+    final isDragged = square == _dragStartSquare;
 
     return GestureDetector(
       onPanStart: (details) => _handleDragStart(square, details),
       onPanUpdate: (details) => _handleDragUpdate(details),
       onPanEnd: (details) => _handleDragEnd(details),
       child: Container(
+        width: squareSize,
+        height: squareSize,
         color: _getSquareColor(isBlack, isLastMoveFrom, isLastMoveTo),
-        child: piece != null
-            ? _buildPiece(piece)
+        child: piece != null && !isDragged
+            ? _buildPiece(piece, squareSize)
             : widget.showCoordinates
-                ? _buildCoordinates(file, rank)
+                ? _buildCoordinates(file, rank, squareSize)
                 : null,
       ),
     );
@@ -106,32 +147,79 @@ class _ChessBoardState extends State<ChessBoard> {
     return isBlack ? const Color(0xFF769656) : const Color(0xFFEEEED2);
   }
 
-  Widget _buildPiece(chess.Piece piece) {
-    // TODO: Implement piece rendering with images
-    return Center(
-      child: Text(
-        _getPieceSymbol(piece),
-        style: TextStyle(
-          color: piece.color == 'w' ? Colors.white : Colors.black,
-          fontSize: 24,
+  Widget _buildPiece(chess.Piece piece, double squareSize) {
+    final pieceKey = '${_getColorString(piece.color)}${piece.type}';
+    final image = _pieceImages[pieceKey];
+
+    if (image == null) {
+      // Return a placeholder instead of throwing an exception
+      return Container(
+        width: squareSize,
+        height: squareSize,
+        decoration: BoxDecoration(
+          color: piece.color == chess.Color.WHITE ? Colors.white : Colors.black,
+          shape: BoxShape.circle,
         ),
-      ),
+        child: Center(
+          child: Text(
+            _getPieceSymbol(piece.type),
+            style: TextStyle(
+              color: piece.color == chess.Color.WHITE
+                  ? Colors.black
+                  : Colors.white,
+              fontSize: squareSize * 0.5,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return RawImage(
+      image: image,
+      fit: BoxFit.contain,
     );
   }
 
-  String _getPieceSymbol(chess.Piece piece) {
-    const symbols = {
-      'p': '♟', 'n': '♞', 'b': '♝', 'r': '♜', 'q': '♛', 'k': '♚',
-    };
-    return symbols[piece.type] ?? '';
+  String _getColorString(chess.Color color) {
+    return color == chess.Color.WHITE ? 'w' : 'b';
   }
 
-  Widget _buildCoordinates(int file, int rank) {
+  String _getPieceSymbol(chess.PieceType type) {
+    switch (type) {
+      case chess.PieceType.KING:
+        return '♔';
+      case chess.PieceType.QUEEN:
+        return '♕';
+      case chess.PieceType.ROOK:
+        return '♖';
+      case chess.PieceType.BISHOP:
+        return '♗';
+      case chess.PieceType.KNIGHT:
+        return '♘';
+      case chess.PieceType.PAWN:
+        return '♙';
+      default:
+        return '?';
+    }
+  }
+
+  Widget _buildDraggedPiece(String square, double squareSize) {
+    final piece = _chess.get(square);
+    if (piece == null) return const SizedBox();
+
+    return SizedBox(
+      width: squareSize,
+      height: squareSize,
+      child: _buildPiece(piece, squareSize),
+    );
+  }
+
+  Widget _buildCoordinates(int file, int rank, double squareSize) {
     if (!widget.showCoordinates) return const SizedBox();
-    
+
     final isBottomRank = rank == 7;
     final isLeftFile = file == 0;
-    
+
     if (!isBottomRank && !isLeftFile) return const SizedBox();
 
     String text = '';
@@ -142,16 +230,14 @@ class _ChessBoardState extends State<ChessBoard> {
     }
 
     return Align(
-      alignment: isBottomRank
-          ? Alignment.bottomCenter
-          : Alignment.centerLeft,
+      alignment: isBottomRank ? Alignment.bottomCenter : Alignment.centerLeft,
       child: Padding(
-        padding: const EdgeInsets.all(2.0),
+        padding: EdgeInsets.all(squareSize * 0.05),
         child: Text(
           text,
           style: TextStyle(
             color: (file + rank) % 2 == 1 ? Colors.white : Colors.black,
-            fontSize: 10,
+            fontSize: squareSize * 0.2,
           ),
         ),
       ),
@@ -159,34 +245,56 @@ class _ChessBoardState extends State<ChessBoard> {
   }
 
   void _handleDragStart(String square, DragStartDetails details) {
+    print('Drag start on square: $square');
     final piece = _chess.get(square);
     if (piece != null) {
       setState(() {
         _draggedPiece = square;
         _dragStartSquare = square;
+        _dragPosition = details.localPosition;
       });
+      print('Started dragging piece: ${piece.type} from $square');
     }
   }
 
   void _handleDragUpdate(DragUpdateDetails details) {
-    // TODO: Implement piece dragging animation
+    if (_draggedPiece != null) {
+      setState(() {
+        _dragPosition = _dragPosition! + details.delta;
+      });
+    }
   }
 
   void _handleDragEnd(DragEndDetails details) {
+    print(
+        'Drag end, dragged piece: $_draggedPiece, start square: $_dragStartSquare');
     if (_draggedPiece != null && _dragStartSquare != null) {
       final targetSquare = _getTargetSquare(details);
+      print('Target square: $targetSquare');
       if (targetSquare != null) {
+        print('Calling onMove with $_dragStartSquare to $targetSquare');
         widget.onMove(_dragStartSquare!, targetSquare);
       }
     }
     setState(() {
       _draggedPiece = null;
       _dragStartSquare = null;
+      _dragPosition = null;
     });
   }
 
   String? _getTargetSquare(DragEndDetails details) {
-    // TODO: Implement target square calculation based on drag position
+    if (_dragPosition == null) return null;
+
+    // Use the current drag position instead of velocity
+    final file = (_dragPosition!.dx / _squareSize).floor();
+    final rank = (_dragPosition!.dy / _squareSize).floor();
+
+    // Check if the position is within the board
+    if (file >= 0 && file < 8 && rank >= 0 && rank < 8) {
+      return _getSquareName(file, rank);
+    }
+
     return null;
   }
-} 
+}
