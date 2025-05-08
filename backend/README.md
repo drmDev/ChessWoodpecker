@@ -13,7 +13,6 @@ A Dart-based backend service for the Chess Woodpecker application, providing puz
 ## Prerequisites
 
 - Dart SDK (2.12.0 or higher)
-- PostgreSQL database
 - Dart dependencies (managed via pub.dev)
 
 ## Setup
@@ -23,17 +22,12 @@ A Dart-based backend service for the Chess Woodpecker application, providing puz
    ```bash
    dart pub get
    ```
-3. Set up the PostgreSQL database:
-   ```sql
-   CREATE DATABASE chess_woodpecker;
-   ```
-4. Create the required tables using the SQL scripts in `lib/database/schema.sql`
 
 ## Configuration
 
 The application uses the following environment variables:
 
-- `DATABASE_URL`: PostgreSQL connection string (default: postgresql://localhost:5432/chess_woodpecker)
+- `DATABASE_PUBLIC_URL`: PostgreSQL connection string (default: postgresql://localhost:5432/chess_woodpecker)
 - `PORT`: Server port (default: 8080)
 
 ## Running the Server
