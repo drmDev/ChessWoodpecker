@@ -21,10 +21,11 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   Puzzle? _currentPuzzle;
-  int _currentMoveIndex = 0;
   String? _lastMoveFrom;
   String? _lastMoveTo;
   bool _isLoading = true;
+  late String _currentFen;
+  final bool _freePlayMode = true; // Set to true for free-play testing
 
   @override
   void initState() {
@@ -37,15 +38,13 @@ class _MainScreenState extends State<MainScreen> {
     print('Loading next puzzle...');
     setState(() => _isLoading = true);
 
-    // For testing, use a hardcoded puzzle ID
-    // In production, this would come from a puzzle collection or API
     const testPuzzleId = 'test_puzzle_1';
     final puzzle = await widget.puzzleService.fetchPuzzle(testPuzzleId);
     print('Puzzle loaded: ${puzzle?.id}');
 
     setState(() {
       _currentPuzzle = puzzle;
-      _currentMoveIndex = 0;
+      _currentFen = puzzle?.fen ?? 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
       _lastMoveFrom = null;
       _lastMoveTo = null;
       _isLoading = false;
@@ -53,55 +52,80 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   void _handleMove(String from, String to) {
-    print('Move attempted: $from to $to');
-    if (_currentPuzzle == null) return;
+    if (_freePlayMode) {
+      _handleFreePlayMove(from, to);
+    } else {
+      _handlePuzzleMove(from, to);
+    }
+  }
 
-    final move = '$from$to';
-    final isValid = widget.puzzleService.validateMove(
-      _currentPuzzle!,
-      move,
-      _currentMoveIndex,
+  void _handleFreePlayMove(String from, String to) {
+    final chessGame = chess.Chess.fromFEN(_currentFen);
+
+    // Get all possible moves in a verbose format, which includes from/to squares.
+    final possibleMoves = chessGame.moves({'verbose': true});
+
+    // Find the specific move that matches the user's action.
+    final matchedMove = possibleMoves.firstWhere(
+      (move) => move['from'] == from && move['to'] == to,
+      orElse: () => null,
     );
 
-    print('Move valid: $isValid');
+    if (matchedMove == null) {
+      // The move is not in the list of legal moves.
+      print('Invalid move: $from to $to is not in the list of possible moves.');
+      widget.soundService.playSound('failure');
+    } else {
+      // The move is legal, execute it using its SAN representation.
+      final sanMove = matchedMove['san'];
+      print('Valid move found: $sanMove. Executing...');
+      final moveResult = chessGame.move(sanMove);
 
-    if (isValid) {
-      setState(() {
-        _lastMoveFrom = from;
-        _lastMoveTo = to;
-        _currentMoveIndex++;
-      });
+      if (moveResult != null) {
+        setState(() {
+          _currentFen = chessGame.fen;
+          _lastMoveFrom = from;
+          _lastMoveTo = to;
+        });
+        //_playMoveSound(chessGame, moveResult);
+      } else {
+        // This should not happen if the logic is correct
+        print('Error: Failed to execute a valid move.');
+      }
+    }
+  }
 
-      // Play appropriate sound based on the move
-      _playMoveSound(from, to);
+  void _handlePuzzleMove(String from, String to) {
+    print('Move attempted in puzzle mode: $from to $to');
+    if (_currentPuzzle == null) return;
 
-      if (_currentMoveIndex >= _currentPuzzle!.solutionMoves.length) {
-        _handlePuzzleComplete();
+    final moveString = '$from$to';
+    final isPuzzleMoveValid = widget.puzzleService.validateMove(
+      _currentPuzzle!,
+      moveString,
+      0, // This needs to be dynamic in a real puzzle session
+    );
+
+    if (isPuzzleMoveValid) {
+      final chessGame = chess.Chess.fromFEN(_currentFen);
+      final moveResult = chessGame.move({'from': from, 'to': to, 'promotion': 'q'});
+
+      // The chess.move method can return null or false for an invalid move.
+      if (moveResult == null || moveResult is bool) {
+        print('Error: Puzzle data and chess engine are out of sync.');
+        _handlePuzzleFailure();
+      } else {
+        setState(() {
+          _currentFen = chessGame.fen;
+          _lastMoveFrom = from;
+          _lastMoveTo = to;
+        });
+        // TODO: fix sounds on playing moves
+        // Potentially check for puzzle completion here
       }
     } else {
       _handlePuzzleFailure();
     }
-  }
-
-  void _playMoveSound(String from, String to) {
-    // Check if it's a capture
-    final targetPiece = _getPieceAtSquare(to);
-    if (targetPiece != null) {
-      widget.soundService.playSound('capture');
-    } else {
-      widget.soundService.playSound('move');
-    }
-
-    // For now, we'll skip check detection as it's not critical
-    // and requires more complex logic with the chess package
-  }
-
-  chess.Piece? _getPieceAtSquare(String square) {
-    if (_currentPuzzle == null) return null;
-
-    final chessGame = chess.Chess();
-    chessGame.load(_currentPuzzle!.fen);
-    return chessGame.get(square);
   }
 
   Future<void> _handlePuzzleComplete() async {
@@ -109,27 +133,27 @@ class _MainScreenState extends State<MainScreen> {
     if (_currentPuzzle != null) {
       await widget.puzzleService.markPuzzleCompleted(_currentPuzzle!.id);
       widget.soundService.playSound('success');
-      // Show success message and load next puzzle
       _loadNextPuzzle();
     }
   }
 
   void _handlePuzzleFailure() {
     print('Puzzle failed!');
-    // Show error message and reset puzzle
     widget.soundService.playSound('failure');
-    setState(() {
-      _currentMoveIndex = 0;
-      _lastMoveFrom = null;
-      _lastMoveTo = null;
-    });
+    // In free-play, we don't reset the whole puzzle
+    if (!_freePlayMode) {
+      setState(() {
+        _lastMoveFrom = null;
+        _lastMoveTo = null;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Chess Woodpecker'),
+        title: Text(_freePlayMode ? 'Free Play Mode' : 'Chess Woodpecker'),
         actions: [
           IconButton(
             icon: Icon(widget.soundService.isMuted
@@ -153,17 +177,18 @@ class _MainScreenState extends State<MainScreen> {
                     padding: const EdgeInsets.all(16.0),
                     child: Column(
                       children: [
-                        Text(
-                          'Puzzle ${_currentPuzzle!.id}',
-                          style: Theme.of(context).textTheme.headlineSmall,
-                        ),
+                        if (!_freePlayMode)
+                          Text(
+                            'Puzzle ${_currentPuzzle!.id}',
+                            style: Theme.of(context).textTheme.headlineSmall,
+                          ),
                         const SizedBox(height: 16),
                         Expanded(
                           child: Center(
                             child: AspectRatio(
                               aspectRatio: 1,
                               child: ChessBoard(
-                                fen: _currentPuzzle!.fen,
+                                fen: _currentFen,
                                 isWhiteOrientation:
                                     _currentPuzzle!.isWhiteToMove,
                                 onMove: _handleMove,
@@ -174,21 +199,15 @@ class _MainScreenState extends State<MainScreen> {
                           ),
                         ),
                         const SizedBox(height: 16),
-                        Text(
-                          'Move ${_currentMoveIndex + 1} of ${_currentPuzzle!.solutionMoves.length}',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
+                        if (!_freePlayMode)
+                          Text(
+                            'Move 1 of X', // Simplified for now
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
                         const SizedBox(height: 16),
                         ElevatedButton(
-                          onPressed: () {
-                            print('Reset button pressed');
-                            setState(() {
-                              _currentMoveIndex = 0;
-                              _lastMoveFrom = null;
-                              _lastMoveTo = null;
-                            });
-                          },
-                          child: const Text('Reset Puzzle'),
+                          onPressed: _loadNextPuzzle,
+                          child: const Text('Reset Board'),
                         ),
                       ],
                     ),
