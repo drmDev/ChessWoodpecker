@@ -87,7 +87,7 @@ class _MainScreenState extends State<MainScreen> {
           _lastMoveFrom = from;
           _lastMoveTo = to;
         });
-        //_playMoveSound(chessGame, moveResult);
+        _playMoveSound(matchedMove);
       } else {
         // This should not happen if the logic is correct
         print('Error: Failed to execute a valid move.');
@@ -146,6 +146,24 @@ class _MainScreenState extends State<MainScreen> {
         _lastMoveFrom = null;
         _lastMoveTo = null;
       });
+    }
+  }
+
+  void _playMoveSound(Map<String, dynamic> move) {
+    final flags = move['flags'] as String?;
+    
+    if (flags != null && flags.contains('c')) {
+      // Capture move
+      widget.soundService.playSound('capture');
+    } else {
+      // Regular move
+      widget.soundService.playSound('move');
+    }
+    
+    // Check if the move results in check
+    final chessGame = chess.Chess.fromFEN(_currentFen);
+    if (chessGame.in_check) {
+      widget.soundService.playSound('check');
     }
   }
 

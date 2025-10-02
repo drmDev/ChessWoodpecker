@@ -4,10 +4,7 @@
 - [x] Basic chess board implementation
 - [x] Move validation for standard moves
 - [x] Basic puzzle loading and display
-- [ ] Implement castling moves
-- [ ] Implement en passant moves
-- [ ] Implement pawn promotion
-- [ ] Add move sounds and visual feedback
+- [x] Add move sounds and visual feedback
 - [ ] Implement puzzle solution validation
 
 ## Phase 2: Puzzle Management

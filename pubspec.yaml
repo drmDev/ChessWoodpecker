@@ -37,6 +37,7 @@ dependencies:
   chess: 0.8.1
   shared_preferences: ^2.2.0
   http: ^1.1.0
+  audioplayers: ^6.0.0
 
 dev_dependencies:
   flutter_test:
